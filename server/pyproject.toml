@@ -1,0 +1,7 @@
+[project]
+name = "raspi-tmprtr-server"
+version = "0.1.0"
+description = "Temperature monitoring server"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []

@@ -1,0 +1,11 @@
+server -*- coding: utf-8 -*-
+
+raspi/server/ (Ruby CGI) の Python 移植。
+descartes/try-python/ にて uv 環境のみセットアップ済み。
+
+o mysql 接続の試作
+o gnuplot によるグラフ生成の試作
+
+環境構築 (descartes 上):
+  uv python install 3.13
+  uv sync
