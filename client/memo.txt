@@ -7,12 +7,15 @@ v temp.py - DS18B20 温度センサー読み取り (w1thermsensor)
 v cputemp.py - CPU 温度取得 (gpiozero + lgpio)
 v httpsget.py - HTTPS GET (requests)
 
-o main スクリプト (tmprtr_multi.py) を作る
-  * 複数センサーを読み取り POST で送信
-  * raspi/client/tmprtr_multi.rb を参照
-  * POST: requests.post("url", data={"temp": 25.5})
-  * クエリパラメータ: params = {"i": id, "t": temp, "k": key}
-    response = requests.get(url, params=params)
+v tmprtr_multi.py - 複数センサー読み取り
+  * read_cpu_temperature() - CPU 温度
+  * read_ds18b20_sensors() - DS18B20 複数センサー
+  * 返却形式: [{'id': ..., 'temperature': ...}, ...]
+  * API できてから POST 送信機能を追加
+
+o POST 送信機能を追加
+  * requests.post(url, data={"i": id, "t": temp, "k": key})
+  * server/post.rb のエンドポイントができてから実装
 
 o cron 登録スクリプト (tmprtr.crontab) を作る
   * CRON_TZ=Asia/Tokyo を設定
