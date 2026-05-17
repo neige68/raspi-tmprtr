@@ -11,7 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **client の本番環境**: raspi（`~/raspi-tmprtr/`）
 
 開発・テストは Hawking WSL のローカルクローンで完結させ、動作確認後に push する。  
-client のセンサー読み取り部分（gpiozero / w1thermsensor）は raspi 実機でのみ動作確認可能。
+client は `MOCK_SENSORS=1` でスタブ動作するため、Hawking WSL でもテスト可能。  
+実センサー（gpiozero / w1thermsensor）の動作確認は raspi 実機でのみ可能。
 
 ## プロジェクト概要
 
@@ -48,11 +49,17 @@ cd server
 uv sync --dev
 cp dot.env .env  # .env を編集して DATABASE_URL と TOTP_SECRET を設定
 
-# client (raspi 上のみ。lgpio のビルドに実機ライブラリが必要)
+# client — 開発環境 (Hawking WSL)
 cd client
-uv python install 3.13
-uv sync
+uv sync --dev
+cp dot.env .env  # MOCK_SENSORS=1 に設定する
+
+# client — 本番環境 (raspi 実機。lgpio のビルドに実機ライブラリが必要)
+cd client
 sudo apt install swig python3-dev liblgpio-dev
+uv python install 3.13
+uv sync --no-dev --extra raspi
+cp dot.env .env  # SERVER_URL と TOTP_SECRET を設定する
 ```
 
 Hawking WSL の MariaDB 起動（WSL 再起動後に必要な場合）:
@@ -75,27 +82,29 @@ curl -X POST http://127.0.0.1:8000/sensor_data \
     -d '{"sensor_id": "SENSOR01", "temperature": 23.456}'
 ```
 
-### client スクリプト実行
+### client スクリプト実行・テスト
 
 ```bash
 cd client
-uv run python tmprtr_multi.py   # 全センサー読み取り
+uv run python tmprtr_multi.py   # 全センサー読み取り（MOCK_SENSORS=1 でスタブ動作）
 uv run python temp.py           # DS18B20 のみ
 uv run python cputemp.py        # CPU 温度のみ
+uv run pytest                   # テスト実行
 ```
 
 ## 実装状況と今後の作業
 
 ### client/ 完了済み
+- `sensors.py` — センサー読み取り抽象化レイヤー（`MOCK_SENSORS=1` でスタブ動作）
+- `tmprtr_multi.py` — 複数センサー統合読み取り（`sensors.py` 経由）
 - `temp.py` — DS18B20 温度センサー読み取り (w1thermsensor)
 - `cputemp.py` — CPU 温度取得 (gpiozero + lgpio)
 - `httpsget.py` — HTTPS GET テスト (requests)
-- `tmprtr_multi.py` — 複数センサー統合読み取り
+- `test_sensors.py` — pytest テスト（モックパス・本番パス両方）
 
 ### client/ 未実装
 - POST 送信機能 (`tmprtr_multi.py` に追加予定)
-  - エンドポイント: `requests.post(url, data={"i": id, "t": temp, "k": key})`
-  - server 側の POST エンドポイント完成後に実装
+  - server 側エンドポイントは完成済み。TOTP 認証付きで送信する
 - cron 登録スクリプト (`tmprtr.crontab`)
   - `CRON_TZ=Asia/Tokyo` を設定すること
 
@@ -123,9 +132,16 @@ TOTP（RFC 6238）によるリクエストヘッダー認証。クライアン�
 uv run python -c "import pyotp; print(pyotp.random_base32())"
 ```
 
-## データ形式
+## client/ の構成
 
-`tmprtr_multi.py` のセンサー読み取り返却形式:
+- `sensors.py` — センサー読み取り抽象化。`MOCK_SENSORS=1` でスタブ値を返し、本番は `gpiozero` / `w1thermsensor` を遅延 import して読む。`load_dotenv()` を呼ぶため `.env` が自動読み込みされる
+- `tmprtr_multi.py` — `sensors.py` を使って全センサーを読み取り表示するメインスクリプト
+- `test_sensors.py` — pytest テスト。モックパスは `monkeypatch` で `MOCK_SENSORS` を切り替え、本番パスは `sys.modules` でハードウェアライブラリを差し替えてテスト
+- `dot.env` — `.env` のテンプレート（`SERVER_URL`、`TOTP_SECRET`、`MOCK_SENSORS`）
+
+### センサー読み取りのデータ形式
+
+`sensors.read_all_sensors()` の返却形式:
 
 ```python
 [{'id': 'cpu', 'temperature': 50.0}, {'id': '<DS18B20シリアルID>', 'temperature': 23.5}, ...]
