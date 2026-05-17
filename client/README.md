@@ -32,6 +32,22 @@ uv run python tmprtr_multi.py
 uv run python tmprtr_multi.py
 ```
 
+## cron 登録（raspi 実機）
+
+```bash
+# 初回登録
+crontab tmprtr.crontab
+
+# 既存の crontab に追記する場合
+crontab -l | cat - tmprtr.crontab | crontab -
+```
+
+ログ確認：
+
+```bash
+journalctl -t raspi-tmprtr -f
+```
+
 ## テスト
 
 ```bash

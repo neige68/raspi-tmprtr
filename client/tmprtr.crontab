@@ -1,0 +1,3 @@
+CRON_TZ=Asia/Tokyo
+
+* * * * * cd /home/neige/raspi-tmprtr/client && uv run python tmprtr_multi.py 2>&1 | /usr/bin/logger -t raspi-tmprtr
