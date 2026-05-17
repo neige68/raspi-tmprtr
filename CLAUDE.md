@@ -16,10 +16,10 @@ client は `MOCK_SENSORS=1` でスタブ動作するため、Hawking WSL でも�
 
 ## プロジェクト概要
 
-Raspberry Pi の温度センサー監視システム。Ruby CGI で書かれた旧リポジトリ `raspi` を Python で再構成している。
+Raspberry Pi の温度センサー監視システム。Ruby CGI で書かれた旧リポジトリ `~/raspi` を Python で再構成している。
 
 - **client/**: raspi 上で動作。DS18B20 センサーと CPU 温度を読み取り、サーバーへ POST する。
-- **server/**: descartes 上で動作。受信データを MySQL に保存し gnuplot でグラフ生成する（実装予定）。
+- **server/**: descartes 上で動作。受信データを MariaDB に保存し、グラフ生成・異常監視・Slack 通知を行う。
 
 ## 実行環境
 
@@ -36,6 +36,7 @@ Claude Code は Hawking WSL 上で動作させる（descartes/raspi ではメモ
 - `master`: 共通コード・ドキュメント
 - `client`: client/ 以下の開発用
 - `server`: server/ 以下の開発用
+- `develop`: 現在の開発ブランチ（master・client・server へのマージ前作業）
 
 descartes と raspi 間のコード同期は GitHub 経由で行う（sshfs は遅すぎるため）。
 
@@ -47,7 +48,7 @@ descartes と raspi 間のコード同期は GitHub 経由で行う（sshfs は�
 # server (Hawking WSL / descartes 共通)
 cd server
 uv sync --dev
-cp dot.env .env  # .env を編集して DATABASE_URL と TOTP_SECRET を設定
+cp dot.env .env  # DATABASE_URL / TOTP_SECRET / SLACK_TOKEN / SLACK_CHANNEL を設定
 
 # client — 開発環境 (Hawking WSL)
 cd client
@@ -59,7 +60,7 @@ cd client
 sudo apt install swig python3-dev liblgpio-dev
 uv python install 3.13
 uv sync --no-dev --extra raspi
-cp dot.env .env  # SERVER_URL と TOTP_SECRET を設定する
+cp dot.env .env  # SERVER_URL / TOTP_SECRET を設定する
 ```
 
 Hawking WSL の MariaDB 起動（WSL 再起動後に必要な場合）:
@@ -73,71 +74,66 @@ sudo service mysql start
 cd server
 uv run uvicorn main:app --reload   # 開発サーバー起動（http://127.0.0.1:8000）
 uv run pytest                      # テスト実行
-
-# データ送信テスト（TOTP コードは Python で生成）
-# python -c "import pyotp; print(pyotp.TOTP('シークレット').now())"
-curl -X POST http://127.0.0.1:8000/sensor_data \
-    -H "Content-Type: application/json" \
-    -H "X-TOTP-Code: <TOTP コード>" \
-    -d '{"sensor_id": "SENSOR01", "temperature": 23.456}'
+uv run python monitor.py           # モニター手動実行
+uv run python daily_report.py      # 日次レポート手動実行
 ```
 
 ### client スクリプト実行・テスト
 
 ```bash
 cd client
-uv run python tmprtr_multi.py   # 全センサー読み取り（MOCK_SENSORS=1 でスタブ動作）
+uv run python tmprtr_multi.py   # 全センサー読み取り＋POST（MOCK_SENSORS=1 でスタブ動作）
 uv run python temp.py           # DS18B20 のみ
 uv run python cputemp.py        # CPU 温度のみ
 uv run pytest                   # テスト実行
 ```
 
-## 実装状況と今後の作業
+## 実装状況
 
 ### client/ 完了済み
 - `sensors.py` — センサー読み取り抽象化レイヤー（`MOCK_SENSORS=1` でスタブ動作）
-- `tmprtr_multi.py` — 複数センサー統合読み取り（`sensors.py` 経由）
+- `tmprtr_multi.py` — 全センサー読み取り＋TOTP 認証付き POST 送信
+- `tmprtr.crontab` — 1分おき実行の cron 設定（`CRON_TZ=Asia/Tokyo`）
 - `temp.py` — DS18B20 温度センサー読み取り (w1thermsensor)
 - `cputemp.py` — CPU 温度取得 (gpiozero + lgpio)
-- `httpsget.py` — HTTPS GET テスト (requests)
 - `test_sensors.py` — pytest テスト（モックパス・本番パス両方）
-
-### client/ 未実装
-- POST 送信機能 (`tmprtr_multi.py` に追加予定)
-  - server 側エンドポイントは完成済み。TOTP 認証付きで送信する
-- cron 登録スクリプト (`tmprtr.crontab`)
-  - `CRON_TZ=Asia/Tokyo` を設定すること
+- `test_tmprtr_multi.py` — POST 送信のテスト
 
 ### server/ 完了済み
-- FastAPI による POST 受信エンドポイント `/sensor_data`（TOTP 認証付き）
-- SQLAlchemy + MariaDB への書き込み（`tmprtr` テーブル）
-- loguru によるログ出力（`logs/sensor_*.log`）
+- `main.py` — FastAPI アプリ。`POST /sensor_data`（TOTP 認証）、`GET /graph`（gnuplot PNG）
+- `graph.py` — gnuplot グラフ生成（期間・センサー種別をパラメータ指定）
+- `monitor.py` — データなし・高温・低温を検知し escalation 付きで Slack 通知
+- `daily_report.py` — 最新値・24h サマリー・異常を毎日 8:00 に Slack 送信
+- `slack_notify.py` — Slack 送信ヘルパー
+- `monitor.crontab` — 毎分実行の cron 設定
+- `daily_report.crontab` — 毎日 8:00 実行の cron 設定
+- `database.py` — SQLAlchemy Engine / SessionLocal / `get_db()`
+- `models.py` — SQLAlchemy モデル（`Tmprtr`、`Sensors`、`Notifications` など）
 
-### server/ 未実装
-- gnuplot によるグラフ生成
+### 未実装
+特になし。
 
-## server/ の構成
+## server/ の構成詳細
 
-- `main.py` — FastAPI アプリ。`POST /sensor_data` エンドポイント、TOTP 認証、loguru ログ
-- `database.py` — SQLAlchemy Engine / SessionLocal / `get_db()` ジェネレータ（`.env` から接続情報を読む）
-- `models.py` — sqlacodegen で生成した SQLAlchemy モデル（`Tmprtr`、`Sensors`、`Notifications` など）
-- `dot.env` — `.env` のテンプレート（`DATABASE_URL`、`TOTP_SECRET`）
-- `test_main.py` — pytest テスト（`get_db` と `verify_totp` を `dependency_overrides` でモック）
+### エンドポイント
+- `POST /sensor_data` — TOTP 認証付きでセンサーデータを受信・DB 保存
+- `GET /graph?hours=24&sensor=all` — gnuplot で PNG グラフ生成。`sensor` は `all`/`cpu`/`other`
 
 ### 認証
-
 TOTP（RFC 6238）によるリクエストヘッダー認証。クライアントは `X-TOTP-Code: <pyotp.TOTP(secret).now()>` を付けて送信する。シークレット生成:
 
 ```bash
 uv run python -c "import pyotp; print(pyotp.random_base32())"
 ```
 
-## client/ の構成
+### Slack 通知
+`SLACK_TOKEN`（Bot Token）と `SLACK_CHANNEL` を `.env` に設定する。  
+`notifications` テーブル（id=1: No Data、id=2: 高温、id=3: 低温）と `notification_intervals` テーブルで通知間隔を管理する。
 
-- `sensors.py` — センサー読み取り抽象化。`MOCK_SENSORS=1` でスタブ値を返し、本番は `gpiozero` / `w1thermsensor` を遅延 import して読む。`load_dotenv()` を呼ぶため `.env` が自動読み込みされる
-- `tmprtr_multi.py` — `sensors.py` を使って全センサーを読み取り表示するメインスクリプト
-- `test_sensors.py` — pytest テスト。モックパスは `monkeypatch` で `MOCK_SENSORS` を切り替え、本番パスは `sys.modules` でハードウェアライブラリを差し替えてテスト
-- `dot.env` — `.env` のテンプレート（`SERVER_URL`、`TOTP_SECRET`、`MOCK_SENSORS`）
+## client/ の構成詳細
+
+- `sensors.py` — `MOCK_SENSORS=1` でスタブ値を返し、本番は `gpiozero` / `w1thermsensor` を遅延 import して読む
+- `tmprtr_multi.py` — `sensors.py` で全センサー読み取り後、`SERVER_URL` / `TOTP_SECRET` を使って POST 送信
 
 ### センサー読み取りのデータ形式
 
