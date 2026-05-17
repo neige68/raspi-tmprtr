@@ -58,6 +58,47 @@ sudo systemctl start raspi-tmprtr
 journalctl -u raspi-tmprtr -f
 ```
 
+## cron 登録（descartes）
+
+### モニター（毎分実行）
+
+```bash
+# 初回登録
+crontab monitor.crontab
+
+# 既存の crontab に追記する場合
+crontab -l | cat - monitor.crontab | crontab -
+```
+
+ログ確認：
+
+```bash
+journalctl -t raspi-monitor -f
+```
+
+### 日次レポート（毎日 8:00）
+
+```bash
+# 初回登録
+crontab daily_report.crontab
+
+# 既存の crontab に追記する場合
+crontab -l | cat - daily_report.crontab | crontab -
+```
+
+ログ確認：
+
+```bash
+journalctl -t raspi-daily-report -f
+```
+
+### 手動実行
+
+```bash
+uv run python monitor.py
+uv run python daily_report.py
+```
+
 ## データ送信テスト
 
 ```bash
