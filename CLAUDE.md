@@ -4,32 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 開発環境
 
-- **作業場所**: Hawking WSL の `~/raspi-tmprtr/`（このリポジトリのローカルクローン）
-- **Claude Code**: Hawking WSL 上で動かす（descartes/raspi はメモリ不足）
-- **git push 先**: GitHub 経由で descartes（server 用）と raspi（client 用）に同期
-- **server の本番環境**: descartes（`~/raspi-tmprtr/`）
-- **client の本番環境**: raspi（`~/raspi-tmprtr/`）
+- **作業場所**: 開発マシン上のローカルクローン
+- **server の本番環境**: Linux サーバー（`~/raspi-tmprtr/`）
+- **client の本番環境**: Raspberry Pi（`~/raspi-tmprtr/`）
 
-開発・テストは Hawking WSL のローカルクローンで完結させ、動作確認後に push する。  
-client は `MOCK_SENSORS=1` でスタブ動作するため、Hawking WSL でもテスト可能。  
-実センサー（gpiozero / w1thermsensor）の動作確認は raspi 実機でのみ可能。
+開発・テストはローカルクローンで完結させ、動作確認後に push する。  
+client は `MOCK_SENSORS=1` でスタブ動作するため、実機なしでもテスト可能。  
+実センサー（gpiozero / w1thermsensor）の動作確認は Raspberry Pi 実機でのみ可能。
 
 ## プロジェクト概要
 
-Raspberry Pi の温度センサー監視システム。Ruby CGI で書かれた旧リポジトリ `~/raspi` を Python で再構成している。
+Raspberry Pi の温度センサー監視システム。
 
-- **client/**: raspi 上で動作。DS18B20 センサーと CPU 温度を読み取り、サーバーへ POST する。
-- **server/**: descartes 上で動作。受信データを MariaDB に保存し、グラフ生成・異常監視・Slack 通知を行う。
-
-## 実行環境
-
-| 役割 | ホスト | アクセス方法 |
-|------|--------|-------------|
-| client | raspi (Raspberry Pi) | `~/raspi-home/raspi-tmprtr/` (sshfs) |
-| server | descartes | `~/descartes/raspi-tmprtr/` (sshfs) |
-
-Claude Code は Hawking WSL 上で動作させる（descartes/raspi ではメモリ不足）。
-コードの編集は Hawking WSL 上の sshfs マウント経由で行い、Emacs・git は descartes/raspi 上で実行する。
+- **client/**: Raspberry Pi 上で動作。DS18B20 センサーと CPU 温度を読み取り、サーバーへ POST する。
+- **server/**: Linux サーバー上で動作。受信データを MariaDB に保存し、グラフ生成・異常監視・Slack 通知を行う。
 
 ## ブランチ構成
 
@@ -38,24 +26,22 @@ Claude Code は Hawking WSL 上で動作させる（descartes/raspi ではメモ
 - `server`: server/ 以下の開発用
 - `develop`: 現在の開発ブランチ（master・client・server へのマージ前作業）
 
-descartes と raspi 間のコード同期は GitHub 経由で行う（sshfs は遅すぎるため）。
-
 ## 開発コマンド
 
 ### 環境構築
 
 ```bash
-# server (Hawking WSL / descartes 共通)
+# server
 cd server
 uv sync --dev
 cp dot.env .env  # DATABASE_URL / TOTP_SECRET / SLACK_TOKEN / SLACK_CHANNEL を設定
 
-# client — 開発環境 (Hawking WSL)
+# client — 開発環境
 cd client
 uv sync --dev
 cp dot.env .env  # MOCK_SENSORS=1 に設定する
 
-# client — 本番環境 (raspi 実機。lgpio のビルドに実機ライブラリが必要)
+# client — 本番環境 (Raspberry Pi 実機。lgpio のビルドに実機ライブラリが必要)
 cd client
 sudo apt install swig python3-dev liblgpio-dev
 uv python install 3.13
@@ -63,7 +49,7 @@ uv sync --no-dev --extra raspi
 cp dot.env .env  # SERVER_URL / TOTP_SECRET を設定する
 ```
 
-Hawking WSL の MariaDB 起動（WSL 再起動後に必要な場合）:
+開発環境で MariaDB を手動起動する場合（再起動後など）:
 ```bash
 sudo service mysql start
 ```
