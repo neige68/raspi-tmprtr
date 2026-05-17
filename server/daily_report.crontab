@@ -1,0 +1,2 @@
+CRON_TZ=Asia/Tokyo
+0 8 * * * cd /home/neige/raspi-tmprtr/server && uv run python daily_report.py 2>&1 | /usr/bin/logger -t raspi-daily-report
