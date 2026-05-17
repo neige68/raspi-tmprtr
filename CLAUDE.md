@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 開発環境
+
+- **作業場所**: Hawking WSL の `~/raspi-tmprtr/`（このリポジトリのローカルクローン）
+- **Claude Code**: Hawking WSL 上で動かす（descartes/raspi はメモリ不足）
+- **git push 先**: GitHub 経由で descartes（server 用）と raspi（client 用）に同期
+- **server の本番環境**: descartes（`~/raspi-tmprtr/`）
+- **client の本番環境**: raspi（`~/raspi-tmprtr/`）
+
+開発・テストは Hawking WSL のローカルクローンで完結させ、動作確認後に push する。  
+client のセンサー読み取り部分（gpiozero / w1thermsensor）は raspi 実機でのみ動作確認可能。
+
 ## プロジェクト概要
 
 Raspberry Pi の温度センサー監視システム。Ruby CGI で書かれた旧リポジトリ `raspi` を Python で再構成している。
@@ -32,17 +43,21 @@ descartes と raspi 間のコード同期は GitHub 経由で行う（sshfs は�
 ### 環境構築
 
 ```bash
-# client (raspi 上)
+# server (Hawking WSL / descartes 共通)
+cd server
+uv sync --dev
+cp dot.env .env  # .env を編集して DATABASE_URL と TOTP_SECRET を設定
+
+# client (raspi 上のみ。lgpio のビルドに実機ライブラリが必要)
 cd client
 uv python install 3.13
 uv sync
-sudo apt install swig python3-dev liblgpio-dev  # lgpio ビルドに必要
+sudo apt install swig python3-dev liblgpio-dev
+```
 
-# server (descartes 上)
-cd server
-uv python install 3.13
-uv sync
-cp dot.env .env  # .env を編集して DATABASE_URL と TOTP_SECRET を設定
+Hawking WSL の MariaDB 起動（WSL 再起動後に必要な場合）:
+```bash
+sudo service mysql start
 ```
 
 ### server の起動・テスト
