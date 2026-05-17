@@ -17,8 +17,9 @@ wheels/
 # uv lock（サブプロジェクトごとに管理）
 # uv.lock は各 client/ server/ 以下にある
 
-# Server: environment variables and sensor logs
+# Environment variables and sensor logs
 server/.env
+client/.env
 server/logs/
 
 # Claude Code

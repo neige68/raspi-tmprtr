@@ -5,8 +5,19 @@ description = "Raspberry Pi temperature sensor client"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "python-dotenv>=1.2.2",
+    "requests>=2.33.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.optional-dependencies]
+# raspi 実機でのみインストールする（lgpio は swig が必要なため開発環境では不可）
+raspi = [
     "gpiozero>=2.0.1",
     "lgpio>=0.2.2.0",
-    "requests>=2.33.1",
     "w1thermsensor>=2.3.0",
 ]
