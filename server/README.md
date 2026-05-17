@@ -15,7 +15,7 @@ cp dot.env .env  # DATABASE_URL と TOTP_SECRET を設定する
 # 開発サーバー（ホットリロード有効）
 uv run uvicorn main:app --reload
 
-# 本番サーバー（descartes 上で実行）
+# 本番サーバー
 uv run uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -25,7 +25,7 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8000
 uv run pytest
 ```
 
-## 自動起動設定（descartes / systemd）
+## 自動起動設定（systemd）
 
 `/etc/systemd/system/raspi-tmprtr.service` を作成する：
 
@@ -35,9 +35,9 @@ Description=raspi-tmprtr server
 After=network.target mysql.service
 
 [Service]
-User=neige
-WorkingDirectory=/home/neige/raspi-tmprtr/server
-ExecStart=/home/neige/raspi-tmprtr/server/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+User=<your-username>
+WorkingDirectory=/home/<your-username>/raspi-tmprtr/server
+ExecStart=/home/<your-username>/raspi-tmprtr/server/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure
 
 [Install]
@@ -58,7 +58,7 @@ sudo systemctl start raspi-tmprtr
 journalctl -u raspi-tmprtr -f
 ```
 
-## cron 登録（descartes）
+## cron 登録
 
 ### モニター（毎分実行）
 
