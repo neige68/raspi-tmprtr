@@ -5,7 +5,7 @@ Raspberry Pi 温度センサーデータを受信・保存するサーバー。F
 ## 環境構築
 
 ```bash
-uv sync --dev
+uv sync
 cp dot.env .env  # DATABASE_URL と TOTP_SECRET を設定する
 ```
 
