@@ -170,12 +170,17 @@ curl -X POST http://localhost:8000/sensor_data \
 
 | パラメータ | 型 | デフォルト | 説明 |
 |---|---|---|---|
-| `hours` | int | 24 | 表示する過去 N 時間 |
+| `hours` | int | 24 | 表示する時間幅（N 時間分） |
 | `sensor` | string | `all` | `all` / `cpu` / `other` |
 | `tz` | int | 9 | タイムゾーンオフセット（時）。例: JST=9、UTC=0 |
+| `start` | datetime | なし | 開始日時（ISO 8601）。省略時は `現在時刻 - hours` から現在時刻まで。指定時は `start` から `start + hours` まで |
 
 ```bash
+# 直近 48 時間
 curl "http://localhost:8000/graph?hours=48&sensor=cpu&tz=9" -o graph.png
+
+# 指定日時から 6 時間
+curl "http://localhost:8000/graph?hours=6&start=2026-05-24T10:00:00&tz=9" -o graph.png
 ```
 
 ### `GET /graph/view`
@@ -184,6 +189,7 @@ curl "http://localhost:8000/graph?hours=48&sensor=cpu&tz=9" -o graph.png
 
 ```
 http://localhost:8000/graph/view?hours=24&sensor=all&tz=9
+http://localhost:8000/graph/view?hours=6&start=2026-05-24T10:00:00&tz=9
 ```
 
 ---

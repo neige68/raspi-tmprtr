@@ -103,8 +103,8 @@ uv run pytest                   # テスト実行
 
 ### エンドポイント
 - `POST /sensor_data` — TOTP 認証付きでセンサーデータを受信・DB 保存
-- `GET /graph?hours=24&sensor=all&tz=9` — gnuplot で PNG グラフ生成。`sensor` は `all`/`cpu`/`other`、`tz` はタイムゾーンオフセット（時）
-- `GET /graph/view?hours=24&sensor=all&tz=9` — グラフを 1 分自動リフレッシュする HTML ページ
+- `GET /graph?hours=24&sensor=all&tz=9[&start=ISO8601]` — gnuplot で PNG グラフ生成。`sensor` は `all`/`cpu`/`other`、`tz` はタイムゾーンオフセット（時）、`start` は開始日時（省略時は `now - hours`〜`now`、指定時は `start`〜`start + hours`）
+- `GET /graph/view?hours=24&sensor=all&tz=9[&start=ISO8601]` — グラフを 1 分自動リフレッシュする HTML ページ
 
 ### 認証
 TOTP（RFC 6238）によるリクエストヘッダー認証。クライアントは `X-TOTP-Code: <pyotp.TOTP(secret).now()>` を付けて送信する。シークレット生成:

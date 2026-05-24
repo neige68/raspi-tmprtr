@@ -1,8 +1,9 @@
 import os
 import subprocess
 from contextlib import asynccontextmanager
+from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Optional
 
 import pyotp
 from fastapi import Depends, FastAPI, HTTPException, Query, Security
@@ -59,8 +60,11 @@ def get_graph_view(
     hours: int = Query(default=24, ge=1),
     sensor: Literal["all", "cpu", "other"] = "all",
     tz: int = Query(default=9, ge=-12, le=14),
+    start: Optional[datetime] = Query(default=None),
 ):
     img_url = f"../graph?hours={hours}&sensor={sensor}&tz={tz}"
+    if start is not None:
+        img_url += f"&start={start.isoformat()}"
     html = (
         "<!DOCTYPE html><html><head>"
         "<meta charset='utf-8'>"
@@ -78,10 +82,11 @@ def get_graph(
     hours: int = Query(default=24, ge=1),
     sensor: Literal["all", "cpu", "other"] = "all",
     tz: int = Query(default=9, ge=-12, le=14),
+    start: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),
 ):
     try:
-        png = generate_graph(db, hours, sensor, tz)
+        png = generate_graph(db, hours, sensor, tz, start)
         return Response(content=png, media_type="image/png")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

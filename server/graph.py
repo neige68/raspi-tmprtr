@@ -3,20 +3,35 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from models import Sensors, Tmprtr
 
 
-def generate_graph(db: Session, hours: int, sensor: str, tz_offset: int = 9) -> bytes:
+def generate_graph(
+    db: Session,
+    hours: int,
+    sensor: str,
+    tz_offset: int = 9,
+    start: Optional[datetime] = None,
+) -> bytes:
     """指定期間・センサー種別のグラフを PNG バイト列で返す。"""
-    since = datetime.now() - timedelta(hours=hours)
+    if start is not None:
+        since = start
+        until = start + timedelta(hours=hours)
+    else:
+        until = datetime.now()
+        since = until - timedelta(hours=hours)
     tz_delta = timedelta(hours=tz_offset)
 
     sensor_names = {s.sensor_id: s.print_name or s.sensor_id for s in db.query(Sensors).all()}
 
-    query = db.query(Tmprtr).filter(Tmprtr.event_datetime >= since)
+    query = db.query(Tmprtr).filter(
+        Tmprtr.event_datetime >= since,
+        Tmprtr.event_datetime <= until,
+    )
     if sensor == "cpu":
         query = query.filter(Tmprtr.sensor_id == "cpu")
     elif sensor == "other":
@@ -45,7 +60,8 @@ def generate_graph(db: Session, hours: int, sensor: str, tz_offset: int = 9) -> 
             name = sensor_names.get(sid, sid)
             plot_parts.append(f'"{path}" using 1:2 with linespoints title "{name}"')
 
-        xfmt = "%m/%d\\n%H:%M" if hours <= 7 * 24 else "%Y/%m/%d"
+        duration_hours = (until - since).total_seconds() / 3600
+        xfmt = "%m/%d\\n%H:%M" if duration_hours <= 7 * 24 else "%Y/%m/%d"
         script = (
             "set terminal png size 1200,600\n"
             f'set output "{tmpdir}/graph.png"\n'
