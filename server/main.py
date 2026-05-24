@@ -6,7 +6,7 @@ from typing import Literal
 
 import pyotp
 from fastapi import Depends, FastAPI, HTTPException, Query, Security
-from fastapi.responses import Response
+from fastapi.responses import HTMLResponse, Response
 from fastapi.security import APIKeyHeader
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -53,6 +53,24 @@ class SensorData(BaseModel):
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
+@app.get("/graph/view", response_class=HTMLResponse)
+def get_graph_view(
+    hours: int = Query(default=24, ge=1),
+    sensor: Literal["all", "cpu", "other"] = "all",
+):
+    img_url = f"../graph?hours={hours}&sensor={sensor}"
+    html = (
+        "<!DOCTYPE html><html><head>"
+        "<meta charset='utf-8'>"
+        "<meta http-equiv='refresh' content='60'>"
+        f"<title>温度グラフ ({hours}h / {sensor})</title>"
+        "</head><body style='margin:0;background:#000'>"
+        f"<img src='{img_url}' style='width:100%'>"
+        "</body></html>"
+    )
+    return HTMLResponse(content=html)
+
 
 @app.get("/graph")
 def get_graph(
