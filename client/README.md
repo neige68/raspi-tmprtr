@@ -34,6 +34,10 @@ uv run python tmprtr_multi.py
 
 ## cron 登録（raspi 実機）
 
+cron は PATH が最小限のため、`tmprtr.crontab` 内で `uv` のインストール先を含む PATH を設定している。
+`tmprtr.crontab` の `<your-username>` を実際のユーザー名に置き換えてから登録すること。
+`uv` を別の場所にインストールした場合は PATH も修正すること。
+
 ```bash
 # 初回登録
 crontab tmprtr.crontab

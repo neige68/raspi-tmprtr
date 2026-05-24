@@ -1,3 +1,4 @@
 CRON_TZ=Asia/Tokyo
+PATH=/home/<your-username>/.local/bin:/usr/local/bin:/usr/bin:/bin
 
-* * * * * cd /home/neige/raspi-tmprtr/client && uv run python tmprtr_multi.py 2>&1 | /usr/bin/logger -t raspi-tmprtr
+* * * * * cd /home/<your-username>/raspi-tmprtr/client && uv run python tmprtr_multi.py 2>&1 | /usr/bin/logger -t raspi-tmprtr
