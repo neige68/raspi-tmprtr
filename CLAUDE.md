@@ -86,8 +86,8 @@ uv run pytest                   # テスト実行
 - `test_tmprtr_multi.py` — POST 送信のテスト
 
 ### server/ 完了済み
-- `main.py` — FastAPI アプリ。`POST /sensor_data`（TOTP 認証）、`GET /graph`（gnuplot PNG）
-- `graph.py` — gnuplot グラフ生成（期間・センサー種別をパラメータ指定）
+- `main.py` — FastAPI アプリ。`POST /sensor_data`（TOTP 認証）、`GET /graph`（gnuplot PNG）、`GET /graph/view`（自動リフレッシュ HTML）
+- `graph.py` — gnuplot グラフ生成（期間・センサー種別・タイムゾーンオフセットをパラメータ指定）
 - `monitor.py` — データなし・高温・低温を検知し escalation 付きで Slack 通知
 - `daily_report.py` — 最新値・24h サマリー・異常を毎日 8:00 に Slack 送信
 - `slack_notify.py` — Slack 送信ヘルパー
@@ -103,7 +103,8 @@ uv run pytest                   # テスト実行
 
 ### エンドポイント
 - `POST /sensor_data` — TOTP 認証付きでセンサーデータを受信・DB 保存
-- `GET /graph?hours=24&sensor=all` — gnuplot で PNG グラフ生成。`sensor` は `all`/`cpu`/`other`
+- `GET /graph?hours=24&sensor=all&tz=9` — gnuplot で PNG グラフ生成。`sensor` は `all`/`cpu`/`other`、`tz` はタイムゾーンオフセット（時）
+- `GET /graph/view?hours=24&sensor=all&tz=9` — グラフを 1 分自動リフレッシュする HTML ページ
 
 ### 認証
 TOTP（RFC 6238）によるリクエストヘッダー認証。クライアントは `X-TOTP-Code: <pyotp.TOTP(secret).now()>` を付けて送信する。シークレット生成:

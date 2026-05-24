@@ -13,7 +13,7 @@ Raspberry Pi の温度センサー監視システム。DS18B20 センサーと C
 
 - **定期収集**: DS18B20（1-Wire）センサーと CPU 温度を 1 分おきに取得・送信
 - **データ保存**: MariaDB にタイムスタンプ付きで蓄積
-- **グラフ表示**: gnuplot で指定期間の温度推移グラフを PNG 生成（`GET /graph`）
+- **グラフ表示**: gnuplot で指定期間の温度推移グラフを PNG 生成（`GET /graph`）、自動リフレッシュ HTML（`GET /graph/view`）
 - **異常監視**: 無通信・高温・低温を検知し、escalation 付きで Slack 通知
 - **日次レポート**: 最新値・24h 統計・異常状況を毎朝 Slack に送信
 - **TOTP 認証**: RFC 6238 準拠の時刻ベースワンタイムパスワードで POST を保護
@@ -172,9 +172,18 @@ curl -X POST http://localhost:8000/sensor_data \
 |---|---|---|---|
 | `hours` | int | 24 | 表示する過去 N 時間 |
 | `sensor` | string | `all` | `all` / `cpu` / `other` |
+| `tz` | int | 9 | タイムゾーンオフセット（時）。例: JST=9、UTC=0 |
 
 ```bash
-curl "http://localhost:8000/graph?hours=48&sensor=cpu" -o graph.png
+curl "http://localhost:8000/graph?hours=48&sensor=cpu&tz=9" -o graph.png
+```
+
+### `GET /graph/view`
+
+グラフを 1 分ごとに自動リフレッシュする HTML ページを返す。パラメータは `/graph` と同じ。ブラウザで直接アクセスして使う。
+
+```
+http://localhost:8000/graph/view?hours=24&sensor=all&tz=9
 ```
 
 ---
