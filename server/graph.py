@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from datetime import datetime, timedelta
+from statistics import quantiles
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -48,6 +49,14 @@ def generate_graph(
     with tempfile.TemporaryDirectory() as tmpdir:
         data_files = {}
         for sid, recs in by_sensor.items():
+            temps = [float(r.tmprtr) for r in recs]
+            if len(temps) >= 4:
+                q1, q3 = quantiles(temps, n=4)[0], quantiles(temps, n=4)[2]
+                iqr = q3 - q1
+                lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+                recs = [r for r, t in zip(recs, temps) if lo <= t <= hi]
+            if not recs:
+                continue
             path = f"{tmpdir}/{sid}.dat"
             with open(path, "w") as f:
                 for r in recs:

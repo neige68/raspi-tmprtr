@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Literal, Optional
 
 import pyotp
-from fastapi import Depends, FastAPI, HTTPException, Query, Security
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Security
 from fastapi.responses import HTMLResponse, Response
 from fastapi.security import APIKeyHeader
 from loguru import logger
@@ -51,18 +51,36 @@ class SensorData(BaseModel):
     sensor_id: str = Field(max_length=30)
     temperature: float = Field(ge=-999.999, le=999.999)
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+    root = request.scope.get("root_path", "")
+    links = [
+        ("6時間 / 全センサー", f"{root}/graph/view?hours=6&sensor=all"),
+        ("24時間 / DS18B20", f"{root}/graph/view?hours=24&sensor=other"),
+        ("1週間 / DS18B20", f"{root}/graph/view?hours=168&sensor=other"),
+    ]
+    items = "".join(f"<li><a href='{url}'>{label}</a></li>" for label, url in links)
+    html = (
+        "<!DOCTYPE html><html><head>"
+        "<meta charset='utf-8'>"
+        "<title>温度グラフ</title>"
+        "</head><body>"
+        "<h1>温度グラフ</h1>"
+        f"<ul>{items}</ul>"
+        "</body></html>"
+    )
+    return HTMLResponse(content=html)
 
 @app.get("/graph/view", response_class=HTMLResponse)
 def get_graph_view(
+    request: Request,
     hours: int = Query(default=24, ge=1),
     sensor: Literal["all", "cpu", "other"] = "all",
     tz: int = Query(default=9, ge=-12, le=14),
     start: Optional[datetime] = Query(default=None),
 ):
-    img_url = f"../graph?hours={hours}&sensor={sensor}&tz={tz}"
+    root = request.scope.get("root_path", "")
+    img_url = f"{root}/graph?hours={hours}&sensor={sensor}&tz={tz}"
     if start is not None:
         img_url += f"&start={start.isoformat()}"
     html = (

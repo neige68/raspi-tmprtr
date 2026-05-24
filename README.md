@@ -13,7 +13,7 @@ Raspberry Pi の温度センサー監視システム。DS18B20 センサーと C
 
 - **定期収集**: DS18B20（1-Wire）センサーと CPU 温度を 1 分おきに取得・送信
 - **データ保存**: MariaDB にタイムスタンプ付きで蓄積
-- **グラフ表示**: gnuplot で指定期間の温度推移グラフを PNG 生成（`GET /graph`）、自動リフレッシュ HTML（`GET /graph/view`）
+- **グラフ表示**: gnuplot で指定期間の温度推移グラフを PNG 生成（`GET /graph`）、自動リフレッシュ HTML（`GET /graph/view`）、外れ値を IQR 法で自動除去
 - **異常監視**: 無通信・高温・低温を検知し、escalation 付きで Slack 通知
 - **日次レポート**: 最新値・24h 統計・異常状況を毎朝 Slack に送信
 - **TOTP 認証**: RFC 6238 準拠の時刻ベースワンタイムパスワードで POST を保護
@@ -166,7 +166,7 @@ curl -X POST http://localhost:8000/sensor_data \
 
 ### `GET /graph`
 
-指定期間の温度推移グラフ（PNG）を返す。
+指定期間の温度推移グラフ（PNG）を返す。センサーごとに IQR 法（Q1−1.5×IQR ～ Q3+1.5×IQR の範囲外を除外）で外れ値を自動除去する。
 
 | パラメータ | 型 | デフォルト | 説明 |
 |---|---|---|---|
@@ -191,6 +191,16 @@ curl "http://localhost:8000/graph?hours=6&start=2026-05-24T10:00:00&tz=9" -o gra
 http://localhost:8000/graph/view?hours=24&sensor=all&tz=9
 http://localhost:8000/graph/view?hours=6&start=2026-05-24T10:00:00&tz=9
 ```
+
+### `GET /`
+
+グラフページへのリンク一覧 HTML を返す。以下の 3 つのビューへのリンクを提供する。
+
+| リンク | 説明 |
+|---|---|
+| 6時間 / 全センサー | `/graph/view?hours=6&sensor=all` |
+| 24時間 / DS18B20 | `/graph/view?hours=24&sensor=other` |
+| 1週間 / DS18B20 | `/graph/view?hours=168&sensor=other` |
 
 ---
 

@@ -102,8 +102,9 @@ uv run pytest                   # テスト実行
 ## server/ の構成詳細
 
 ### エンドポイント
+- `GET /` — グラフページへのリンク一覧 HTML（6h/all、24h/other、168h/other）
 - `POST /sensor_data` — TOTP 認証付きでセンサーデータを受信・DB 保存
-- `GET /graph?hours=24&sensor=all&tz=9[&start=ISO8601]` — gnuplot で PNG グラフ生成。`sensor` は `all`/`cpu`/`other`、`tz` はタイムゾーンオフセット（時）、`start` は開始日時（省略時は `now - hours`〜`now`、指定時は `start`〜`start + hours`）
+- `GET /graph?hours=24&sensor=all&tz=9[&start=ISO8601]` — gnuplot で PNG グラフ生成。センサーごとに IQR 法（Q1−1.5×IQR ～ Q3+1.5×IQR）で外れ値を除去。`sensor` は `all`/`cpu`/`other`、`tz` はタイムゾーンオフセット（時）、`start` は開始日時（省略時は `now - hours`〜`now`、指定時は `start`〜`start + hours`）
 - `GET /graph/view?hours=24&sensor=all&tz=9[&start=ISO8601]` — グラフを 1 分自動リフレッシュする HTML ページ
 
 ### 認証
