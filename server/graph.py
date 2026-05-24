@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 from models import Sensors, Tmprtr
 
 
-def generate_graph(db: Session, hours: int, sensor: str) -> bytes:
+def generate_graph(db: Session, hours: int, sensor: str, tz_offset: int = 9) -> bytes:
     """指定期間・センサー種別のグラフを PNG バイト列で返す。"""
     since = datetime.now() - timedelta(hours=hours)
+    tz_delta = timedelta(hours=tz_offset)
 
     sensor_names = {s.sensor_id: s.print_name or s.sensor_id for s in db.query(Sensors).all()}
 
@@ -35,7 +36,8 @@ def generate_graph(db: Session, hours: int, sensor: str) -> bytes:
             path = f"{tmpdir}/{sid}.dat"
             with open(path, "w") as f:
                 for r in recs:
-                    f.write(f"{r.event_datetime.strftime('%Y-%m-%dT%H:%M:%S')} {float(r.tmprtr)}\n")
+                    dt = (r.event_datetime + tz_delta).strftime('%Y-%m-%dT%H:%M:%S')
+                    f.write(f"{dt} {float(r.tmprtr)}\n")
             data_files[sid] = path
 
         plot_parts = []

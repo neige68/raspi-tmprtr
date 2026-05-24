@@ -58,8 +58,9 @@ def read_root():
 def get_graph_view(
     hours: int = Query(default=24, ge=1),
     sensor: Literal["all", "cpu", "other"] = "all",
+    tz: int = Query(default=9, ge=-12, le=14),
 ):
-    img_url = f"../graph?hours={hours}&sensor={sensor}"
+    img_url = f"../graph?hours={hours}&sensor={sensor}&tz={tz}"
     html = (
         "<!DOCTYPE html><html><head>"
         "<meta charset='utf-8'>"
@@ -76,10 +77,11 @@ def get_graph_view(
 def get_graph(
     hours: int = Query(default=24, ge=1),
     sensor: Literal["all", "cpu", "other"] = "all",
+    tz: int = Query(default=9, ge=-12, le=14),
     db: Session = Depends(get_db),
 ):
     try:
-        png = generate_graph(db, hours, sensor)
+        png = generate_graph(db, hours, sensor, tz)
         return Response(content=png, media_type="image/png")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
