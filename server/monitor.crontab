@@ -1,2 +1,4 @@
 CRON_TZ=Asia/Tokyo
-* * * * * cd /home/neige/raspi-tmprtr/server && uv run python monitor.py 2>&1 | /usr/bin/logger -t raspi-monitor
+PATH=/home/<your-username>/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+* * * * * cd /home/<your-username>/raspi-tmprtr/server && uv run python monitor.py 2>&1 | /usr/bin/logger -t raspi-monitor

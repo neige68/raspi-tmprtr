@@ -60,6 +60,10 @@ journalctl -u raspi-tmprtr -f
 
 ## cron 登録
 
+cron は PATH が最小限のため、各 crontab ファイル内で `uv` のインストール先を含む PATH を設定している。
+`<your-username>` を実際のユーザー名に置き換えてから登録すること。
+`uv` を別の場所にインストールした場合は PATH も修正すること。
+
 ### モニター（毎分実行）
 
 ```bash
