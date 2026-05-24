@@ -43,7 +43,7 @@ def generate_graph(db: Session, hours: int, sensor: str, tz_offset: int = 9) -> 
         plot_parts = []
         for sid, path in data_files.items():
             name = sensor_names.get(sid, sid)
-            plot_parts.append(f'"{path}" using 1:2 with lines title "{name}"')
+            plot_parts.append(f'"{path}" using 1:2 with linespoints title "{name}"')
 
         xfmt = "%m/%d\\n%H:%M" if hours <= 7 * 24 else "%Y/%m/%d"
         script = (
