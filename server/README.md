@@ -2,6 +2,8 @@
 
 Raspberry Pi 温度センサーデータを受信・保存するサーバー。FastAPI + MariaDB で構成。
 
+> 詳細なセットアップ手順はリポジトリルートの [README.md](../README.md) を参照。
+
 ## 環境構築
 
 ```bash
@@ -127,7 +129,7 @@ uv run python outdoor_temp.py
 
 ```bash
 # TOTP コードを生成してから curl で送信
-python -c "import pyotp; print(pyotp.TOTP('シークレット').now())"
+uv run python -c "import pyotp; print(pyotp.TOTP('シークレット').now())"
 curl -X POST http://127.0.0.1:8000/sensor_data \
     -H "Content-Type: application/json" \
     -H "X-TOTP-Code: <TOTP コード>" \

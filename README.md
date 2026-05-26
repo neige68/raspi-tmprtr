@@ -14,6 +14,7 @@ Raspberry Pi の温度センサー監視システム。DS18B20 センサーと C
 - **定期収集**: DS18B20（1-Wire）センサーと CPU 温度を 1 分おきに取得・送信
 - **データ保存**: MariaDB にタイムスタンプ付きで蓄積
 - **グラフ表示**: gnuplot で指定期間の温度推移グラフを PNG 生成（`GET /graph`）、自動リフレッシュ HTML（`GET /graph/view`）、外れ値を IQR 法で自動除去
+- **屋外気温取得**: OpenWeatherMap API から推定屋外気温を 5 分おきに取得・DB 保存（`EstimatedOutdoor` センサーとして記録）
 - **異常監視**: 無通信・高温・低温を検知し、escalation 付きで Slack 通知
 - **日次レポート**: 最新値・24h 統計・異常状況を毎朝 Slack に送信
 - **TOTP 認証**: RFC 6238 準拠の時刻ベースワンタイムパスワードで POST を保護
@@ -69,6 +70,8 @@ DATABASE_URL=mysql+pymysql://user:pass@localhost:3306/dbname
 TOTP_SECRET=<上で生成したシークレット>
 SLACK_TOKEN=xoxb-your-slack-bot-token
 SLACK_CHANNEL=#your-channel-name
+OWM_API_KEY=<openweathermap.org で取得した API キー>
+OWM_CITY=Tokyo,JP
 ```
 
 MariaDB にテーブルを作成する（[スキーマ](#データベーススキーマ)参照）。
@@ -123,12 +126,18 @@ MOCK_SENSORS=0
 
 cron に登録する：
 
+> cron は PATH が最小限のため、`tmprtr.crontab` 内で `uv` のインストール先を含む PATH を設定している。  
+> `tmprtr.crontab` の `<your-username>` を実際のユーザー名に置き換えてから登録すること。
+
 ```bash
 # 既存の crontab に追記する場合
 crontab -l | cat - tmprtr.crontab | crontab -
 ```
 
-### 4. 監視・日次レポートの cron 登録（server 側）
+### 4. 監視・日次レポート・屋外気温取得の cron 登録（server 側）
+
+> cron は PATH が最小限のため、各 crontab ファイル内で `uv` のインストール先を含む PATH を設定している。  
+> `<your-username>` を実際のユーザー名に置き換えてから登録すること。
 
 ```bash
 # モニター（毎分）
@@ -136,6 +145,9 @@ crontab -l | cat - monitor.crontab | crontab -
 
 # 日次レポート（毎日 8:00 JST）
 crontab -l | cat - daily_report.crontab | crontab -
+
+# 推定屋外気温取得（5 分ごと）
+crontab -l | cat - outdoor_temp.crontab | crontab -
 ```
 
 ---
