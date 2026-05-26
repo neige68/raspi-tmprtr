@@ -1,0 +1,4 @@
+CRON_TZ=Asia/Tokyo
+PATH=/home/user/raspi-tmprtr/server/.venv/bin:/usr/local/bin:/usr/bin:/bin
+
+*/5 * * * * cd /home/user/raspi-tmprtr/server && uv run python outdoor_temp.py 2>&1 | /usr/bin/logger -t raspi-outdoor-temp

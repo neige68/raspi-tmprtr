@@ -93,6 +93,8 @@ uv run pytest                   # テスト実行
 - `slack_notify.py` — Slack 送信ヘルパー
 - `monitor.crontab` — 毎分実行の cron 設定
 - `daily_report.crontab` — 毎日 8:00 実行の cron 設定
+- `outdoor_temp.py` — OpenWeatherMap から推定屋外気温を取得し sensor_id=`EstimatedOutdoor` で DB 保存
+- `outdoor_temp.crontab` — 5 分ごと実行の cron 設定
 - `database.py` — SQLAlchemy Engine / SessionLocal / `get_db()`
 - `models.py` — SQLAlchemy モデル（`Tmprtr`、`Sensors`、`Notifications` など）
 
