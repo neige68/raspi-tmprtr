@@ -6,7 +6,7 @@ Raspberry Pi 温度センサーデータを受信・保存するサーバー。F
 
 ```bash
 uv sync
-cp dot.env .env  # DATABASE_URL と TOTP_SECRET を設定する
+cp dot.env .env  # DATABASE_URL / TOTP_SECRET / SLACK_TOKEN / SLACK_CHANNEL / OWM_API_KEY を設定する
 ```
 
 ## 起動
@@ -96,11 +96,31 @@ crontab -l | cat - daily_report.crontab | crontab -
 journalctl -t raspi-daily-report -f
 ```
 
+### 推定屋外気温取得（5 分ごと）
+
+OpenWeatherMap から気温を取得し `EstimatedOutdoor` として DB に保存する。  
+事前に `.env` の `OWM_API_KEY`（[openweathermap.org](https://openweathermap.org/api) で取得）と `OWM_CITY` を設定すること。
+
+```bash
+# 初回登録
+crontab outdoor_temp.crontab
+
+# 既存の crontab に追記する場合
+crontab -l | cat - outdoor_temp.crontab | crontab -
+```
+
+ログ確認：
+
+```bash
+journalctl -t raspi-outdoor-temp -f
+```
+
 ### 手動実行
 
 ```bash
 uv run python monitor.py
 uv run python daily_report.py
+uv run python outdoor_temp.py
 ```
 
 ## データ送信テスト
