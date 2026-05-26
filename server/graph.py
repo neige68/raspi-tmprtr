@@ -48,15 +48,15 @@ def generate_graph(
 
     with tempfile.TemporaryDirectory() as tmpdir:
         data_files = {}
+        yrange_lo_list = []
+        yrange_hi_list = []
         for sid, recs in by_sensor.items():
             temps = [float(r.tmprtr) for r in recs]
             if len(temps) >= 4:
                 q1, q3 = quantiles(temps, n=4)[0], quantiles(temps, n=4)[2]
                 iqr = q3 - q1
-                lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
-                recs = [r for r, t in zip(recs, temps) if lo <= t <= hi]
-            if not recs:
-                continue
+                yrange_lo_list.append(q1 - 1.5 * iqr)
+                yrange_hi_list.append(q3 + 1.5 * iqr)
             path = f"{tmpdir}/{sid}.dat"
             with open(path, "w") as f:
                 for r in recs:
@@ -71,6 +71,10 @@ def generate_graph(
 
         duration_hours = (until - since).total_seconds() / 3600
         xfmt = "%m/%d\\n%H:%M" if duration_hours <= 7 * 24 else "%Y/%m/%d"
+        yrange_line = (
+            f"set yrange [{min(yrange_lo_list):.1f}:{max(yrange_hi_list):.1f}]\n"
+            if yrange_lo_list else ""
+        )
         script = (
             "set terminal png size 1200,600\n"
             f'set output "{tmpdir}/graph.png"\n'
@@ -80,6 +84,7 @@ def generate_graph(
             "set ylabel \"Temperature (C)\"\n"
             "set grid\n"
             "set key outside right\n"
+            f"{yrange_line}"
             f"plot {', '.join(plot_parts)}\n"
         )
 
