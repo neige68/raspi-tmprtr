@@ -89,7 +89,7 @@ def get_graph_view(
         "<meta http-equiv='refresh' content='60'>"
         f"<title>温度グラフ ({hours}h / {sensor})</title>"
         "</head><body style='margin:0;background:#000'>"
-        f"<img src='{img_url}' style='width:100%'>"
+        f"<img src='{img_url}' style='width:100%;max-height:100vh;object-fit:contain'>"
         "</body></html>"
     )
     return HTMLResponse(content=html)
