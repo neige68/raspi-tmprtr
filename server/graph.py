@@ -1,6 +1,7 @@
 """gnuplot によるグラフ生成モジュール。"""
 import subprocess
 import tempfile
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 from statistics import quantiles
@@ -10,12 +11,15 @@ from sqlalchemy.orm import Session
 
 from models import Sensors, Tmprtr
 
+# サーバー（MariaDB）の UTC オフセット（時、東方向が正）
+_server_tz_hours = -time.timezone / 3600
+
 
 def generate_graph(
     db: Session,
     hours: int,
     sensor: str,
-    tz_offset: int = 9,
+    tz_offset: int = 0,
     start: Optional[datetime] = None,
 ) -> bytes:
     """指定期間・センサー種別のグラフを PNG バイト列で返す。"""
@@ -25,7 +29,8 @@ def generate_graph(
     else:
         until = datetime.now()
         since = until - timedelta(hours=hours)
-    tz_delta = timedelta(hours=tz_offset)
+    # DB はサーバー TZ で記録されているため、表示ずれを補正してブラウザ TZ に変換する
+    tz_delta = timedelta(hours=tz_offset - _server_tz_hours)
 
     sensor_names = {s.sensor_id: s.print_name or s.sensor_id for s in db.query(Sensors).all()}
 

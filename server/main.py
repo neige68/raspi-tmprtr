@@ -76,20 +76,34 @@ def get_graph_view(
     request: Request,
     hours: int = Query(default=24, ge=1),
     sensor: Literal["all", "cpu", "other"] = "all",
-    tz: int = Query(default=9, ge=-12, le=14),
+    tz: Optional[int] = Query(default=None, ge=-12, le=14),
     start: Optional[datetime] = Query(default=None),
 ):
     root = request.scope.get("root_path", "")
-    img_url = f"{root}/graph?hours={hours}&sensor={sensor}&tz={tz}"
-    if start is not None:
-        img_url += f"&start={start.isoformat()}"
+    start_param = start.isoformat() if start is not None else ""
+    # tz 未指定時はブラウザの UTC オフセットを JS で取得、指定時はその値を定数として埋め込む
+    tz_expr = str(tz) if tz is not None else "Math.round(-new Date().getTimezoneOffset()/60)"
     html = (
         "<!DOCTYPE html><html><head>"
         "<meta charset='utf-8'>"
-        "<meta http-equiv='refresh' content='60'>"
         f"<title>温度グラフ ({hours}h / {sensor})</title>"
+        "<script>\n"
+        f"var _root='{root}',_hours={hours},_sensor='{sensor}',_start='{start_param}';\n"
+        f"function _tz(){{return {tz_expr};}}\n"
+        "function buildUrl(){\n"
+        "  var u=_root+'/graph?hours='+_hours+'&sensor='+_sensor+'&tz='+_tz();\n"
+        "  if(_start)u+='&start='+_start;\n"
+        "  return u+'&_='+Date.now();\n"
+        "}\n"
+        "window.onload=function(){\n"
+        "  var g=document.getElementById('g');\n"
+        "  function load(){g.src=buildUrl();}\n"
+        "  load();\n"
+        "  setInterval(load,60000);\n"
+        "};\n"
+        "</script>"
         "</head><body style='margin:0;background:#000'>"
-        f"<img src='{img_url}' style='width:100%;max-height:100vh;object-fit:contain'>"
+        "<img id='g' src='' style='width:100%;max-height:100vh;object-fit:contain'>"
         "</body></html>"
     )
     return HTMLResponse(content=html)
@@ -99,12 +113,12 @@ def get_graph_view(
 def get_graph(
     hours: int = Query(default=24, ge=1),
     sensor: Literal["all", "cpu", "other"] = "all",
-    tz: int = Query(default=9, ge=-12, le=14),
+    tz: Optional[int] = Query(default=None, ge=-12, le=14),
     start: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),
 ):
     try:
-        png = generate_graph(db, hours, sensor, tz, start)
+        png = generate_graph(db, hours, sensor, tz if tz is not None else 0, start)
         return Response(content=png, media_type="image/png")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
