@@ -88,7 +88,7 @@ uv run pytest                   # テスト実行
 ### server/ 完了済み
 - `main.py` — FastAPI アプリ。`POST /sensor_data`（TOTP 認証）、`GET /graph`（gnuplot PNG）、`GET /graph/view`（自動リフレッシュ HTML）
 - `graph.py` — gnuplot グラフ生成（期間・センサー種別・タイムゾーンオフセットをパラメータ指定）
-- `monitor.py` — データなし・高温・低温を検知し escalation 付きで Slack 通知
+- `monitor.py` — データなし・高温・低温を検知し escalation 付きで Slack 通知。高温・低温通知には違反時の温度を付加（例: `High Temp (35.2°C): 5 minutes`）
 - `daily_report.py` — 最新値・24h サマリー・異常を毎日 8:00 に Slack 送信
 - `slack_notify.py` — Slack 送信ヘルパー
 - `monitor.crontab` — 毎分実行の cron 設定
@@ -118,7 +118,8 @@ uv run python -c "import pyotp; print(pyotp.random_base32())"
 
 ### Slack 通知
 `SLACK_TOKEN`（Bot Token）と `SLACK_CHANNEL` を `.env` に設定する。  
-`notifications` テーブル（id=1: No Data、id=2: 高温、id=3: 低温）と `notification_intervals` テーブルで通知間隔を管理する。
+`notifications` テーブル（id=1: No Data、id=2: 高温、id=3: 低温）と `notification_intervals` テーブルで通知間隔を管理する。  
+`notifications.value` には直近の違反温度が保存され、高温・低温通知メッセージに反映される。
 
 ## client/ の構成詳細
 
