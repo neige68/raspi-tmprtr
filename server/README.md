@@ -125,6 +125,16 @@ uv run python daily_report.py
 uv run python outdoor_temp.py
 ```
 
+## Slack 通知テスト
+
+`.env` の `SLACK_TOKEN` / `SLACK_CHANNEL` が正しく設定されているか確認する：
+
+```bash
+uv run python -c "from dotenv import load_dotenv; load_dotenv(); from slack_notify import slack_post; slack_post('テスト通知: raspi-tmprtr Slack 設定確認')"
+```
+
+成功すると `Slack 送信成功` とログに出力され、指定チャンネルにメッセージが届く。
+
 ## データ送信テスト
 
 ```bash
