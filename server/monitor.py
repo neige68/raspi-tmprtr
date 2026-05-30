@@ -48,19 +48,20 @@ def _update_limit_check(db: Session, notifications_id: int, where_clause: str,
                         last_event_datetime: datetime | None) -> None:
     """upper/lower limit 違反の最終時刻を last_ng_event に書き込み、2分以上前なら last_ok_event も更新する。"""
     result = db.execute(text(f"""
-        SELECT t.event_datetime FROM tmprtr t
+        SELECT t.event_datetime, t.tmprtr FROM tmprtr t
         JOIN sensors s ON t.sensor_id = s.sensor_id
         WHERE {where_clause}
         ORDER BY t.event_datetime DESC LIMIT 1
     """)).first()
 
     last_ng_event = result[0] if result else None
+    last_ng_tmprtr = result[1] if result else None
     delta_seconds = 120
 
     if last_ng_event:
         db.execute(
-            text("UPDATE notifications SET last_ng_event = :dt WHERE id = :id"),
-            {"dt": last_ng_event, "id": notifications_id},
+            text("UPDATE notifications SET last_ng_event = :dt, value = :val WHERE id = :id"),
+            {"dt": last_ng_event, "val": last_ng_tmprtr, "id": notifications_id},
         )
         if last_event_datetime:
             delta_seconds = (last_event_datetime - last_ng_event).total_seconds()
@@ -130,7 +131,8 @@ def check_and_notify(db: Session, now: datetime) -> None:
 
         if _should_notify(now, delta_seconds, row.last_notification, intervals, notifications_id):
             minutes = int(delta_seconds / 60)
-            message = f"{row.text_}: {minutes} minutes"
+            temp_str = f" ({row.value:.1f}°C)" if notifications_id > 1 and row.value is not None else ""
+            message = f"{row.text_}{temp_str}: {minutes} minutes"
             logger.info(f"通知送信: {message}")
             slack_post(message)
             db.execute(
