@@ -57,7 +57,9 @@ def read_root(request: Request):
     links = [
         ("6時間 / 全センサー", f"{root}/graph/view?hours=6&sensor=all"),
         ("24時間 / DS18B20", f"{root}/graph/view?hours=24&sensor=other"),
+        ("2日間 / DS18B20", f"{root}/graph/view?hours=48&sensor=other"),
         ("1週間 / DS18B20", f"{root}/graph/view?hours=168&sensor=other"),
+        ("30日間 / DS18B20", f"{root}/graph/view?hours=720&sensor=other"),
     ]
     items = "".join(f"<li><a href='{url}'>{label}</a></li>" for label, url in links)
     html = (
