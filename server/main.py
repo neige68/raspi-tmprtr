@@ -56,6 +56,7 @@ def read_root(request: Request):
     root = request.scope.get("root_path", "")
     links = [
         ("6時間 / 全センサー", f"{root}/graph/view?hours=6&sensor=all"),
+        ("6時間 / DS18B20", f"{root}/graph/view?hours=6&sensor=indoor"),
         ("24時間 / DS18B20", f"{root}/graph/view?hours=24&sensor=other"),
         ("2日間 / DS18B20", f"{root}/graph/view?hours=48&sensor=other"),
         ("1週間 / DS18B20", f"{root}/graph/view?hours=168&sensor=other"),
@@ -77,7 +78,7 @@ def read_root(request: Request):
 def get_graph_view(
     request: Request,
     hours: int = Query(default=24, ge=1),
-    sensor: Literal["all", "cpu", "other"] = "all",
+    sensor: Literal["all", "cpu", "other", "indoor"] = "all",
     tz: Optional[int] = Query(default=None, ge=-12, le=14),
     start: Optional[datetime] = Query(default=None),
 ):
@@ -114,7 +115,7 @@ def get_graph_view(
 @app.get("/graph")
 def get_graph(
     hours: int = Query(default=24, ge=1),
-    sensor: Literal["all", "cpu", "other"] = "all",
+    sensor: Literal["all", "cpu", "other", "indoor"] = "all",
     tz: Optional[int] = Query(default=None, ge=-12, le=14),
     start: Optional[datetime] = Query(default=None),
     db: Session = Depends(get_db),

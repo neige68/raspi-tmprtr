@@ -42,6 +42,11 @@ def generate_graph(
         query = query.filter(Tmprtr.sensor_id == "cpu")
     elif sensor == "other":
         query = query.filter(Tmprtr.sensor_id != "cpu")
+    elif sensor == "indoor":
+        query = query.filter(
+            Tmprtr.sensor_id != "cpu",
+            Tmprtr.sensor_id != "EstimatedOutdoor",
+        )
     rows = query.order_by(Tmprtr.sensor_id, Tmprtr.event_datetime).all()
 
     if not rows:
