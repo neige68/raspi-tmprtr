@@ -7,12 +7,19 @@ from datetime import datetime, timedelta
 from statistics import quantiles
 from typing import Optional
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from models import Sensors, Tmprtr
+from models import Sensors
 
 # サーバー（MariaDB）の UTC オフセット（時、東方向が正）
 _server_tz_hours = -time.timezone / 3600
+
+# グラフ 1 本あたりの最大描画点数（SQL 集計で制限）
+_MAX_POINTS = 2000
+
+# DB クエリのタイムアウト秒数（MariaDB max_statement_time）
+_QUERY_TIMEOUT_SECS = 30
 
 
 def generate_graph(
@@ -34,20 +41,29 @@ def generate_graph(
 
     sensor_names = {s.sensor_id: s.print_name or s.sensor_id for s in db.query(Sensors).all()}
 
-    query = db.query(Tmprtr).filter(
-        Tmprtr.event_datetime >= since,
-        Tmprtr.event_datetime <= until,
+    total_secs = int((until - since).total_seconds())
+    bucket_secs = max(60, total_secs // _MAX_POINTS)
+
+    sensor_conditions = {
+        "cpu": "sensor_id = 'cpu'",
+        "other": "sensor_id != 'cpu'",
+        "indoor": "sensor_id != 'cpu' AND sensor_id != 'EstimatedOutdoor'",
+        "all": "TRUE",
+    }
+    sensor_cond = sensor_conditions.get(sensor, "TRUE")
+
+    # DB クエリタイムアウトをセッション単位で設定し、SQL レベルで集計・間引きして取得する
+    db.execute(text(f"SET max_statement_time={_QUERY_TIMEOUT_SECS}"))
+    sql = text(
+        f"SELECT sensor_id,"
+        f" FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(event_datetime) / :bucket) * :bucket) AS dt,"
+        f" AVG(tmprtr) AS tmprtr"
+        f" FROM tmprtr"
+        f" WHERE event_datetime BETWEEN :since AND :until AND {sensor_cond}"
+        f" GROUP BY sensor_id, FLOOR(UNIX_TIMESTAMP(event_datetime) / :bucket)"
+        f" ORDER BY sensor_id, dt"
     )
-    if sensor == "cpu":
-        query = query.filter(Tmprtr.sensor_id == "cpu")
-    elif sensor == "other":
-        query = query.filter(Tmprtr.sensor_id != "cpu")
-    elif sensor == "indoor":
-        query = query.filter(
-            Tmprtr.sensor_id != "cpu",
-            Tmprtr.sensor_id != "EstimatedOutdoor",
-        )
-    rows = query.order_by(Tmprtr.sensor_id, Tmprtr.event_datetime).all()
+    rows = db.execute(sql, {"bucket": bucket_secs, "since": since, "until": until}).fetchall()
 
     if not rows:
         raise ValueError("指定期間にデータがありません")
@@ -57,16 +73,10 @@ def generate_graph(
         by_sensor[row.sensor_id].append(row)
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # 1センサーあたりの最大描画点数。超える場合は均等間引きする
-        _MAX_POINTS = 2000
-
         data_files = {}
         yrange_lo_list = []
         yrange_hi_list = []
         for sid, recs in by_sensor.items():
-            if len(recs) > _MAX_POINTS:
-                step = len(recs) // _MAX_POINTS
-                recs = recs[::step]
             temps = [float(r.tmprtr) for r in recs]
             if len(temps) >= 4:
                 q1, q3 = quantiles(temps, n=4)[0], quantiles(temps, n=4)[2]
@@ -76,7 +86,7 @@ def generate_graph(
             path = f"{tmpdir}/{sid}.dat"
             with open(path, "w") as f:
                 for r in recs:
-                    dt = (r.event_datetime + tz_delta).strftime('%Y-%m-%dT%H:%M:%S')
+                    dt = (r.dt + tz_delta).strftime('%Y-%m-%dT%H:%M:%S')
                     f.write(f"{dt} {float(r.tmprtr)}\n")
             data_files[sid] = path
 
@@ -108,7 +118,7 @@ def generate_graph(
         with open(script_path, "w") as f:
             f.write(script)
 
-        subprocess.run(["gnuplot", script_path], check=True, capture_output=True, timeout=120)
+        subprocess.run(["gnuplot", script_path], check=True, capture_output=True, timeout=60)
 
         with open(f"{tmpdir}/graph.png", "rb") as f:
             return f.read()

@@ -1,6 +1,8 @@
 import os
 import subprocess
 from contextlib import asynccontextmanager
+
+from sqlalchemy.exc import OperationalError
 from datetime import datetime
 from decimal import Decimal
 from typing import Literal, Optional
@@ -125,6 +127,8 @@ def get_graph(
         return Response(content=png, media_type="image/png")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except OperationalError:
+        raise HTTPException(status_code=504, detail="DB クエリがタイムアウトしました")
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail="グラフ生成がタイムアウトしました")
     except subprocess.CalledProcessError:
