@@ -57,10 +57,16 @@ def generate_graph(
         by_sensor[row.sensor_id].append(row)
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        # 1センサーあたりの最大描画点数。超える場合は均等間引きする
+        _MAX_POINTS = 2000
+
         data_files = {}
         yrange_lo_list = []
         yrange_hi_list = []
         for sid, recs in by_sensor.items():
+            if len(recs) > _MAX_POINTS:
+                step = len(recs) // _MAX_POINTS
+                recs = recs[::step]
             temps = [float(r.tmprtr) for r in recs]
             if len(temps) >= 4:
                 q1, q3 = quantiles(temps, n=4)[0], quantiles(temps, n=4)[2]
@@ -102,7 +108,7 @@ def generate_graph(
         with open(script_path, "w") as f:
             f.write(script)
 
-        subprocess.run(["gnuplot", script_path], check=True, capture_output=True)
+        subprocess.run(["gnuplot", script_path], check=True, capture_output=True, timeout=120)
 
         with open(f"{tmpdir}/graph.png", "rb") as f:
             return f.read()

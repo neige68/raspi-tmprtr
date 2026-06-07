@@ -125,6 +125,8 @@ def get_graph(
         return Response(content=png, media_type="image/png")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="グラフ生成がタイムアウトしました")
     except subprocess.CalledProcessError:
         raise HTTPException(status_code=500, detail="グラフ生成に失敗しました")
 
