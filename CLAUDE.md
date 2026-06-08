@@ -87,7 +87,7 @@ uv run pytest                   # テスト実行
 
 ### server/ 完了済み
 - `main.py` — FastAPI アプリ。`POST /sensor_data`（TOTP 認証）、`GET /graph`（gnuplot PNG）、`GET /graph/view`（自動リフレッシュ HTML）
-- `graph.py` — gnuplot グラフ生成（期間・センサー種別・タイムゾーンオフセットをパラメータ指定）
+- `graph.py` — gnuplot グラフ生成（期間・センサー種別・タイムゾーンオフセットをパラメータ指定）。SQL の時間バケット集計（`GROUP BY FLOOR(UNIX_TIMESTAMP / bucket_secs)`）でセンサー 1 本あたり最大 2000 点に間引いてから取得する。MariaDB の `max_statement_time=30` でクエリタイムアウトも設定済み
 - `monitor.py` — データなし・高温・低温を検知し escalation 付きで Slack 通知。高温・低温通知には違反時の温度を付加（例: `High Temp (35.2°C): 5 minutes`）
 - `daily_report.py` — 最新値・24h サマリー・異常を毎日 8:00 に Slack 送信
 - `slack_notify.py` — Slack 送信ヘルパー
@@ -106,8 +106,18 @@ uv run pytest                   # テスト実行
 ### エンドポイント
 - `GET /` — グラフページへのリンク一覧 HTML（6h/all、24h/other、168h/other）
 - `POST /sensor_data` — TOTP 認証付きでセンサーデータを受信・DB 保存
-- `GET /graph?hours=24&sensor=all&tz=9[&start=ISO8601]` — gnuplot で PNG グラフ生成。センサーごとに IQR 法（Q1−1.5×IQR ～ Q3+1.5×IQR）で外れ値を除去。`sensor` は `all`/`cpu`/`other`、`tz` はタイムゾーンオフセット（時）、`start` は開始日時（省略時は `now - hours`〜`now`、指定時は `start`〜`start + hours`）
+- `GET /graph?hours=24&sensor=all&tz=9[&start=ISO8601]` — gnuplot で PNG グラフ生成。センサーごとに IQR 法（Q1−1.5×IQR ～ Q3+1.5×IQR）で外れ値を除去。`sensor` は `all`/`cpu`/`other`/`indoor`、`tz` はタイムゾーンオフセット（時）、`start` は開始日時（省略時は `now - hours`〜`now`、指定時は `start`〜`start + hours`）。DB クエリは SQL で時間バケット集計（最大 2000 点）してから取得するため、長期間指定でも応答時間は一定
 - `GET /graph/view?hours=24&sensor=all&tz=9[&start=ISO8601]` — グラフを 1 分自動リフレッシュする HTML ページ
+
+### graph.py の設計上の注意
+
+長期間グラフ（数ヶ月分）でサーバーが応答不能になる問題を経験済み。以下の設計を維持すること:
+
+- **ダウンサンプリングは必ず SQL レベルで行う** — Python で `query.all()` してから間引くと、数十万行が一度メモリ・ネットワークに流れてボトルネックになる
+- SQL: `GROUP BY FLOOR(UNIX_TIMESTAMP(event_datetime) / :bucket)` で時間バケット集計
+- `bucket_secs = max(60, total_secs // 2000)` — 期間に応じて自動調整
+- `SET max_statement_time=30` — クエリを 30 秒でタイムアウトさせる（`OperationalError` を捕捉して 504 を返す）
+- `subprocess.run(..., timeout=60)` — gnuplot プロセスのタイムアウト
 
 ### 認証
 TOTP（RFC 6238）によるリクエストヘッダー認証。クライアントは `X-TOTP-Code: <pyotp.TOTP(secret).now()>` を付けて送信する。シークレット生成:
