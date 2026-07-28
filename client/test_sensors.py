@@ -11,8 +11,15 @@ import sensors
 class TestMockPath:
     def test_cpu_temperature(self, monkeypatch):
         monkeypatch.setattr(sensors, 'MOCK_SENSORS', True)
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'raspi')
         result = sensors.read_cpu_temperature()
         assert result == {'id': 'cpu', 'temperature': 45.0}
+
+    def test_cpu_temperature_other_host(self, monkeypatch):
+        monkeypatch.setattr(sensors, 'MOCK_SENSORS', True)
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'pi2')
+        result = sensors.read_cpu_temperature()
+        assert result == {'id': 'pi2_cpu', 'temperature': 45.0}
 
     def test_ds18b20_sensors(self, monkeypatch):
         monkeypatch.setattr(sensors, 'MOCK_SENSORS', True)
@@ -23,10 +30,25 @@ class TestMockPath:
 
     def test_read_all_sensors(self, monkeypatch):
         monkeypatch.setattr(sensors, 'MOCK_SENSORS', True)
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'raspi')
         result = sensors.read_all_sensors()
         # CPU + DS18B20 x2
         assert len(result) == 3
         assert result[0]['id'] == 'cpu'
+
+
+class TestCpuSensorId:
+    def test_default_host(self, monkeypatch):
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'raspi')
+        assert sensors.cpu_sensor_id() == 'cpu'
+
+    def test_default_host_fqdn(self, monkeypatch):
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'raspi.local')
+        assert sensors.cpu_sensor_id() == 'cpu'
+
+    def test_other_host(self, monkeypatch):
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'pi2')
+        assert sensors.cpu_sensor_id() == 'pi2_cpu'
 
 
 # ── 本番パス（ハードウェアライブラリを sys.modules で差し替え）のテスト ──
@@ -63,8 +85,15 @@ def fake_w1thermsensor(monkeypatch):
 class TestRealPath:
     def test_cpu_temperature(self, monkeypatch, fake_gpiozero):
         monkeypatch.setattr(sensors, 'MOCK_SENSORS', False)
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'raspi')
         result = sensors.read_cpu_temperature()
         assert result == {'id': 'cpu', 'temperature': 52.3}
+
+    def test_cpu_temperature_other_host(self, monkeypatch, fake_gpiozero):
+        monkeypatch.setattr(sensors, 'MOCK_SENSORS', False)
+        monkeypatch.setattr(sensors.socket, 'gethostname', lambda: 'pi2')
+        result = sensors.read_cpu_temperature()
+        assert result == {'id': 'pi2_cpu', 'temperature': 52.3}
 
     def test_ds18b20_sensors(self, monkeypatch, fake_w1thermsensor):
         monkeypatch.setattr(sensors, 'MOCK_SENSORS', False)
