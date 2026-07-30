@@ -44,10 +44,13 @@ def generate_graph(
     total_secs = int((until - since).total_seconds())
     bucket_secs = max(60, total_secs // _MAX_POINTS)
 
+    # ホスト名付き CPU センサー ID（例: raspi2_cpu）も CPU として扱う（collation は
+    # utf8mb4_general_ci で大小文字を区別しないため '%_CPU' で '%_cpu' にも一致する）
+    _is_cpu = "(sensor_id = 'cpu' OR sensor_id LIKE '%_CPU')"
     sensor_conditions = {
-        "cpu": "sensor_id = 'cpu'",
-        "other": "sensor_id != 'cpu'",
-        "indoor": "sensor_id != 'cpu' AND sensor_id != 'EstimatedOutdoor'",
+        "cpu": _is_cpu,
+        "other": f"NOT {_is_cpu}",
+        "indoor": f"NOT {_is_cpu} AND sensor_id != 'EstimatedOutdoor'",
         "all": "TRUE",
     }
     sensor_cond = sensor_conditions.get(sensor, "TRUE")
