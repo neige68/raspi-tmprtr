@@ -2,7 +2,7 @@ from typing import Optional
 import datetime
 import decimal
 
-from sqlalchemy import DECIMAL, DateTime, String, text
+from sqlalchemy import Boolean, DECIMAL, DateTime, String, text
 from sqlalchemy.dialects.mysql import INTEGER
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -37,6 +37,7 @@ class Sensors(Base):
     print_name: Mapped[Optional[str]] = mapped_column(String(30))
     lower_limit: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(6, 3))
     upper_limit: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(6, 3))
+    data_check_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text('1'))
 
 
 class Tmprtr(Base):

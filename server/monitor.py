@@ -23,11 +23,12 @@ logger.add("logs/monitor_{time}.log", rotation="10 MB", compression="zip", reten
 
 
 def get_last_event_datetime(db: Session) -> tuple[datetime | None, str | None]:
-    """全センサーの最終イベント時刻の最小値（最も古いセンサーの最終受信時刻）と、
-    そのセンサーの print_name を返す。"""
+    """No Data チェック対象センサー（data_check_enabled=True）の最終イベント時刻の
+    最小値（最も古いセンサーの最終受信時刻）と、そのセンサーの print_name を返す。"""
     result = db.execute(text("""
         SELECT MAX(t.event_datetime) AS last_event, s.print_name
         FROM tmprtr t JOIN sensors s ON t.sensor_id = s.sensor_id
+        WHERE s.data_check_enabled
         GROUP BY t.sensor_id, s.print_name
         ORDER BY last_event ASC
         LIMIT 1
