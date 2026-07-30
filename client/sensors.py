@@ -10,11 +10,11 @@ load_dotenv()
 MOCK_SENSORS = os.environ.get('MOCK_SENSORS', '0') == '1'
 
 # 従来からの本番機のホスト名。この機体だけ従来どおり id='cpu' を使う
-_DEFAULT_CPU_HOST = 'raspi'
+_DEFAULT_CPU_HOST = 'raspberrypi'
 
 
 def cpu_sensor_id() -> str:
-    """CPU センサーの ID を返す。hostname が raspi 以外なら '<hostname>_cpu'。"""
+    """CPU センサーの ID を返す。hostname が raspberrypi 以外なら '<hostname>_cpu'。"""
     host = socket.gethostname().split('.')[0]
     return 'cpu' if host == _DEFAULT_CPU_HOST else f'{host}_cpu'
 

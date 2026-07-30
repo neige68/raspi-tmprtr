@@ -157,7 +157,7 @@ uv run python -c "import pyotp; print(pyotp.random_base32())"
 ## client/ の構成詳細
 
 - `sensors.py` — `MOCK_SENSORS=1` でスタブ値を返し、本番は `gpiozero` / `w1thermsensor` を遅延 import して読む
-  - `cpu_sensor_id()` — CPU センサーの sensor_id を返す。従来機（hostname=`raspi`）は `cpu`、それ以外は `<hostname>_cpu`（複数台運用時にホスト名で区別するため）。server 側の `sensor=cpu` グラフ絞り込みはこの両方の形式にマッチさせる必要がある（`server/graph.py` 参照）
+  - `cpu_sensor_id()` — CPU センサーの sensor_id を返す。従来機（hostname=`raspberrypi`）は `cpu`、それ以外は `<hostname>_cpu`（複数台運用時にホスト名で区別するため）。server 側の `sensor=cpu` グラフ絞り込みはこの両方の形式にマッチさせる必要がある（`server/graph.py` 参照）
 - `tmprtr_multi.py` — `sensors.py` で全センサー読み取り後、`SERVER_URL` / `TOTP_SECRET` を使って POST 送信
 
 ### センサー読み取りのデータ形式
