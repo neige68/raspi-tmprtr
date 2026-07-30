@@ -13,7 +13,7 @@ Raspberry Pi の温度センサー監視システム。DS18B20 センサーと C
 
 - **定期収集**: DS18B20（1-Wire）センサーと CPU 温度を 1 分おきに取得・送信
 - **データ保存**: MariaDB にタイムスタンプ付きで蓄積
-- **グラフ表示**: gnuplot で指定期間の温度推移グラフを PNG 生成（`GET /graph`）、自動リフレッシュ HTML（`GET /graph/view`）、外れ値を IQR 法で自動除去
+- **グラフ表示**: gnuplot で指定期間の温度推移グラフを PNG 生成（`GET /graph`）、自動リフレッシュ HTML（`GET /graph/view`）、外れ値を IQR 法で自動除去（`show_outliers=true` で無効化可能）
 - **屋外気温取得**: OpenWeatherMap API から推定屋外気温を 5 分おきに取得・DB 保存（`EstimatedOutdoor` センサーとして記録）
 - **異常監視**: 無通信・高温・低温を検知し、escalation 付きで Slack 通知
 - **日次レポート**: 最新値・24h 統計・異常状況を毎朝 Slack に送信
@@ -190,9 +190,10 @@ curl -X POST http://localhost:8000/sensor_data \
 | パラメータ | 型 | デフォルト | 説明 |
 |---|---|---|---|
 | `hours` | int | 24 | 表示する時間幅（N 時間分） |
-| `sensor` | string | `all` | `all` / `cpu` / `other` |
+| `sensor` | string | `all` | `all` / `cpu` / `other` / `indoor` |
 | `tz` | int | 9 | タイムゾーンオフセット（時）。例: JST=9、UTC=0 |
 | `start` | datetime | なし | 開始日時（ISO 8601）。省略時は `現在時刻 - hours` から現在時刻まで。指定時は `start` から `start + hours` まで |
+| `show_outliers` | bool | `false` | `true` にすると IQR 法による外れ値除去を無効化し、全データを表示する |
 
 ```bash
 # 直近 48 時間
@@ -200,6 +201,9 @@ curl "http://localhost:8000/graph?hours=48&sensor=cpu&tz=9" -o graph.png
 
 # 指定日時から 6 時間
 curl "http://localhost:8000/graph?hours=6&start=2026-05-24T10:00:00&tz=9" -o graph.png
+
+# 外れ値除去なしで直近 6 時間
+curl "http://localhost:8000/graph?hours=6&sensor=all&tz=9&show_outliers=true" -o graph.png
 ```
 
 ### `GET /graph/view`
@@ -213,13 +217,17 @@ http://localhost:8000/graph/view?hours=6&start=2026-05-24T10:00:00&tz=9
 
 ### `GET /`
 
-グラフページへのリンク一覧 HTML を返す。以下の 3 つのビューへのリンクを提供する。
+グラフページへのリンク一覧 HTML を返す。以下のビューへのリンクを提供する。
 
 | リンク | 説明 |
 |---|---|
 | 6時間 / 全センサー | `/graph/view?hours=6&sensor=all` |
-| 24時間 / DS18B20 | `/graph/view?hours=24&sensor=other` |
-| 1週間 / DS18B20 | `/graph/view?hours=168&sensor=other` |
+| 6時間 / 全センサー（外れ値除去なし） | `/graph/view?hours=6&sensor=all&show_outliers=true` |
+| 6時間 / DS18B20 | `/graph/view?hours=6&sensor=indoor` |
+| 24時間 / DS18B20+外気温 | `/graph/view?hours=24&sensor=other` |
+| 2日間 / DS18B20+外気温 | `/graph/view?hours=48&sensor=other` |
+| 1週間 / DS18B20+外気温 | `/graph/view?hours=168&sensor=other` |
+| 30日間 / DS18B20+外気温 | `/graph/view?hours=720&sensor=other` |
 
 ---
 
