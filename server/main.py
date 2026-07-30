@@ -58,6 +58,7 @@ def read_root(request: Request):
     root = request.scope.get("root_path", "")
     links = [
         ("6時間 / 全センサー", f"{root}/graph/view?hours=6&sensor=all"),
+        ("6時間 / 全センサー（外れ値除去なし）", f"{root}/graph/view?hours=6&sensor=all&show_outliers=true"),
         ("6時間 / DS18B20", f"{root}/graph/view?hours=6&sensor=indoor"),
         ("24時間 / DS18B20+外気温", f"{root}/graph/view?hours=24&sensor=other"),
         ("2日間 / DS18B20+外気温", f"{root}/graph/view?hours=48&sensor=other"),
