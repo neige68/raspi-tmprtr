@@ -22,24 +22,28 @@ from slack_notify import slack_post
 logger.add("logs/monitor_{time}.log", rotation="10 MB", compression="zip", retention="30 days")
 
 
-def get_last_event_datetime(db: Session) -> datetime | None:
-    """全センサーの最終イベント時刻の最小値（最も古いセンサーの最終受信時刻）を返す。"""
-    return db.execute(text("""
-        SELECT MIN(last_event) FROM (
-            SELECT MAX(event_datetime) AS last_event
-            FROM tmprtr t JOIN sensors s ON t.sensor_id = s.sensor_id
-            GROUP BY t.sensor_id
-        ) sub
-    """)).scalar()
+def get_last_event_datetime(db: Session) -> tuple[datetime | None, str | None]:
+    """全センサーの最終イベント時刻の最小値（最も古いセンサーの最終受信時刻）と、
+    そのセンサーの print_name を返す。"""
+    result = db.execute(text("""
+        SELECT MAX(t.event_datetime) AS last_event, s.print_name
+        FROM tmprtr t JOIN sensors s ON t.sensor_id = s.sensor_id
+        GROUP BY t.sensor_id, s.print_name
+        ORDER BY last_event ASC
+        LIMIT 1
+    """)).first()
+    if result is None:
+        return None, None
+    return result[0], result[1]
 
 
-def update_no_data(db: Session, last_event_datetime: datetime | None) -> None:
-    """id=1: 全センサーの最終受信時刻を last_ok_event に書き込む。"""
+def update_no_data(db: Session, last_event_datetime: datetime | None, sensor_name: str | None) -> None:
+    """id=1: 全センサーの最終受信時刻と、最も古いセンサーの print_name を書き込む。"""
     if last_event_datetime is None:
         return
     db.execute(
-        text("UPDATE notifications SET last_ok_event = :dt WHERE id = 1"),
-        {"dt": last_event_datetime},
+        text("UPDATE notifications SET last_ok_event = :dt, sensor_name = :name WHERE id = 1"),
+        {"dt": last_event_datetime, "name": sensor_name},
     )
     db.commit()
 
@@ -131,8 +135,13 @@ def check_and_notify(db: Session, now: datetime) -> None:
 
         if _should_notify(now, delta_seconds, row.last_notification, intervals, notifications_id):
             minutes = int(delta_seconds / 60)
-            temp_str = f" ({row.value:.1f}°C)" if notifications_id > 1 and row.value is not None else ""
-            message = f"{row.text_}{temp_str}: {minutes} minutes"
+            if notifications_id == 1 and row.sensor_name:
+                detail_str = f" ({row.sensor_name})"
+            elif notifications_id > 1 and row.value is not None:
+                detail_str = f" ({row.value:.1f}°C)"
+            else:
+                detail_str = ""
+            message = f"{row.text_}{detail_str}: {minutes} minutes"
             logger.info(f"通知送信: {message}")
             slack_post(message)
             db.execute(
@@ -147,9 +156,9 @@ def run() -> None:
     logger.info("Start")
     db = SessionLocal()
     try:
-        last_event_datetime = get_last_event_datetime(db)
-        logger.debug(f"last_event_datetime: {last_event_datetime}")
-        update_no_data(db, last_event_datetime)
+        last_event_datetime, sensor_name = get_last_event_datetime(db)
+        logger.debug(f"last_event_datetime: {last_event_datetime} sensor_name: {sensor_name}")
+        update_no_data(db, last_event_datetime, sensor_name)
         update_high_temp(db, last_event_datetime)
         update_low_temp(db, last_event_datetime)
         check_and_notify(db, now)

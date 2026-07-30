@@ -23,6 +23,7 @@ class Notifications(Base):
     id: Mapped[int] = mapped_column(INTEGER(11), primary_key=True)
     text_: Mapped[str] = mapped_column('text', String(80), nullable=False)
     value: Mapped[Optional[decimal.Decimal]] = mapped_column(DECIMAL(6, 3))
+    sensor_name: Mapped[Optional[str]] = mapped_column(String(30))
     last_ok_event: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
     last_ng_event: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
     last_notification: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime)
