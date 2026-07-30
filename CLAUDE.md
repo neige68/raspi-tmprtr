@@ -119,6 +119,29 @@ uv run pytest                   # テスト実行
 - `SET max_statement_time=30` — クエリを 30 秒でタイムアウトさせる（`OperationalError` を捕捉して 504 を返す）
 - `subprocess.run(..., timeout=60)` — gnuplot プロセスのタイムアウト
 
+gnuplot の凡例（`title`）にセンサーの `print_name` を使う際の注意:
+
+- **gnuplot はデフォルト（enhanced text）で `_` を下付き文字、`^` を上付き文字として解釈する** — `print_name` にアンダースコアを含むセンサー（例: `raspi2_cpu`）があると凡例表示が崩れる
+- 対策: `title "<name>" noenhanced` のように **`title` の直後に `noenhanced` を置く**（`with linespoints` より後に書いても解釈される）
+- gnuplot は WSL2 開発環境には未インストールのことがある。導入: `sudo apt-get install -y gnuplot-nox`（X11 不要、PNG 出力のみなのでこれで十分）。バージョン確認: `gnuplot --version`
+
+CPU センサーの判定（`sensor=cpu`/`other`/`indoor` の絞り込み）:
+
+- client 側は CPU センサー ID を `cpu`（従来機）または `<hostname>_cpu`（ホスト名で区別、`client/sensors.py` の `cpu_sensor_id()` 参照）として送ってくる
+- そのため SQL の CPU 判定は `sensor_id = 'cpu'` 単独ではなく `(sensor_id = 'cpu' OR sensor_id LIKE '%_CPU')` を使うこと（`sensor_id` の collation は `utf8mb4_general_ci` で大小文字を区別しないため `%_CPU` で `%_cpu` にも一致する）
+- `other` / `indoor` はこの CPU 判定を `NOT (...)` で使い、判定ロジックを重複させない
+
+### DB スキーマ変更時の注意
+
+`init_db.py` は `Base.metadata.create_all(bind=engine)` でテーブルを作成するが、**これは新規テーブル作成のみで既存テーブルへの列追加（ALTER TABLE）は行わない**。
+`models.py` にカラムを追加したら、開発 DB・本番 DB それぞれで手動 `ALTER TABLE` を実行すること（マイグレーションツールは導入していない）。
+
+```sql
+ALTER TABLE <table> ADD COLUMN <col> <type> [NOT NULL DEFAULT ...] AFTER <既存列>;
+```
+
+コードを本番へ反映したら **`sudo systemctl restart raspi-tmprtr` が必須**（`git pull` だけでは実行中プロセスに反映されない。詳細は [server/README.md](server/README.md) 参照）。
+
 ### 認証
 TOTP（RFC 6238）によるリクエストヘッダー認証。クライアントは `X-TOTP-Code: <pyotp.TOTP(secret).now()>` を付けて送信する。シークレット生成:
 
@@ -134,6 +157,7 @@ uv run python -c "import pyotp; print(pyotp.random_base32())"
 ## client/ の構成詳細
 
 - `sensors.py` — `MOCK_SENSORS=1` でスタブ値を返し、本番は `gpiozero` / `w1thermsensor` を遅延 import して読む
+  - `cpu_sensor_id()` — CPU センサーの sensor_id を返す。従来機（hostname=`raspi`）は `cpu`、それ以外は `<hostname>_cpu`（複数台運用時にホスト名で区別するため）。server 側の `sensor=cpu` グラフ絞り込みはこの両方の形式にマッチさせる必要がある（`server/graph.py` 参照）
 - `tmprtr_multi.py` — `sensors.py` で全センサー読み取り後、`SERVER_URL` / `TOTP_SECRET` を使って POST 送信
 
 ### センサー読み取りのデータ形式
