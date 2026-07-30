@@ -106,6 +106,13 @@ sudo systemctl enable raspi-tmprtr
 sudo systemctl start raspi-tmprtr
 ```
 
+`git pull` でコードを更新した場合、実行中のプロセスには反映されない（`--reload` は開発サーバーのみ）ため、
+更新のたびに再起動が必要：
+
+```bash
+sudo systemctl restart raspi-tmprtr
+```
+
 ### 3. client のセットアップ（Raspberry Pi 実機）
 
 ```bash

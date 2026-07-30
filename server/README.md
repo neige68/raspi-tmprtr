@@ -60,6 +60,15 @@ sudo systemctl start raspi-tmprtr
 journalctl -u raspi-tmprtr -f
 ```
 
+### 更新の反映
+
+`git pull` でコードを更新しても、起動中の uvicorn プロセスはメモリ上の古いコードのまま動き続ける
+（`--reload` を付けているのは開発サーバーのみ）。**コード変更を反映するには再起動が必須**：
+
+```bash
+sudo systemctl restart raspi-tmprtr
+```
+
 ## cron 登録
 
 cron は PATH が最小限のため、各 crontab ファイル内で `uv` のインストール先を含む PATH を設定している。
