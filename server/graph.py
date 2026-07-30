@@ -93,7 +93,7 @@ def generate_graph(
         plot_parts = []
         for sid, path in data_files.items():
             name = sensor_names.get(sid, sid)
-            plot_parts.append(f'"{path}" using 1:2 with linespoints title "{name}"')
+            plot_parts.append(f'"{path}" using 1:2 with linespoints title "{name}" noenhanced')
 
         duration_hours = (until - since).total_seconds() / 3600
         xfmt = "%m/%d\\n%H:%M" if duration_hours <= 7 * 24 else "%Y/%m/%d"
