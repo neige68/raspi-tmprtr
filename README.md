@@ -259,11 +259,12 @@ CREATE TABLE tmprtr (
 );
 
 CREATE TABLE sensors (
-    print_order INT(11)      NOT NULL,
-    sensor_id   VARCHAR(30)  NOT NULL,
-    print_name  VARCHAR(30),
-    lower_limit DECIMAL(6,3),
-    upper_limit DECIMAL(6,3),
+    print_order        INT(11)      NOT NULL,
+    sensor_id          VARCHAR(30)  NOT NULL,
+    print_name         VARCHAR(30),
+    lower_limit        DECIMAL(6,3),
+    upper_limit        DECIMAL(6,3),
+    data_check_enabled BOOLEAN      NOT NULL DEFAULT 1,
     PRIMARY KEY (print_order)
 );
 
@@ -271,6 +272,7 @@ CREATE TABLE notifications (
     id                INT(11)     NOT NULL,
     text              VARCHAR(80) NOT NULL,
     value             DECIMAL(6,3),
+    sensor_name       VARCHAR(30),
     last_ok_event     DATETIME,
     last_ng_event     DATETIME,
     last_notification DATETIME,
