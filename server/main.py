@@ -83,21 +83,25 @@ def get_graph_view(
     sensor: Literal["all", "cpu", "other", "indoor"] = "all",
     tz: Optional[int] = Query(default=None, ge=-12, le=14),
     start: Optional[datetime] = Query(default=None),
+    show_outliers: bool = Query(default=False),
 ):
     root = request.scope.get("root_path", "")
     start_param = start.isoformat() if start is not None else ""
     # tz 未指定時はブラウザの UTC オフセットを JS で取得、指定時はその値を定数として埋め込む
     tz_expr = str(tz) if tz is not None else "Math.round(-new Date().getTimezoneOffset()/60)"
+    outliers_param = "true" if show_outliers else "false"
     html = (
         "<!DOCTYPE html><html><head>"
         "<meta charset='utf-8'>"
         f"<title>温度グラフ ({hours}h / {sensor})</title>"
         "<script>\n"
-        f"var _root='{root}',_hours={hours},_sensor='{sensor}',_start='{start_param}';\n"
+        f"var _root='{root}',_hours={hours},_sensor='{sensor}',_start='{start_param}',"
+        f"_showOutliers={outliers_param};\n"
         f"function _tz(){{return {tz_expr};}}\n"
         "function buildUrl(){\n"
         "  var u=_root+'/graph?hours='+_hours+'&sensor='+_sensor+'&tz='+_tz();\n"
         "  if(_start)u+='&start='+_start;\n"
+        "  if(_showOutliers)u+='&show_outliers=true';\n"
         "  return u+'&_='+Date.now();\n"
         "}\n"
         "window.onload=function(){\n"
@@ -120,10 +124,14 @@ def get_graph(
     sensor: Literal["all", "cpu", "other", "indoor"] = "all",
     tz: Optional[int] = Query(default=None, ge=-12, le=14),
     start: Optional[datetime] = Query(default=None),
+    show_outliers: bool = Query(default=False),
     db: Session = Depends(get_db),
 ):
     try:
-        png = generate_graph(db, hours, sensor, tz if tz is not None else 0, start)
+        png = generate_graph(
+            db, hours, sensor, tz if tz is not None else 0, start,
+            remove_outliers=not show_outliers,
+        )
         return Response(content=png, media_type="image/png")
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

@@ -28,8 +28,13 @@ def generate_graph(
     sensor: str,
     tz_offset: int = 0,
     start: Optional[datetime] = None,
+    remove_outliers: bool = True,
 ) -> bytes:
-    """指定期間・センサー種別のグラフを PNG バイト列で返す。"""
+    """指定期間・センサー種別のグラフを PNG バイト列で返す。
+
+    remove_outliers=True の場合、センサーごとに IQR 法（Q1-1.5*IQR ～ Q3+1.5*IQR）で
+    算出した範囲に Y 軸レンジを絞り込み、外れ値を表示から除外する。
+    """
     if start is not None:
         since = start
         until = start + timedelta(hours=hours)
@@ -81,7 +86,7 @@ def generate_graph(
         yrange_hi_list = []
         for sid, recs in by_sensor.items():
             temps = [float(r.tmprtr) for r in recs]
-            if len(temps) >= 4:
+            if remove_outliers and len(temps) >= 4:
                 q1, q3 = quantiles(temps, n=4)[0], quantiles(temps, n=4)[2]
                 iqr = q3 - q1
                 yrange_lo_list.append(q1 - 1.5 * iqr)
