@@ -14,8 +14,6 @@ from loguru import logger
 from database import SessionLocal
 from models import Tmprtr
 
-logger.add("logs/outdoor_temp_{time}.log", rotation="10 MB", compression="zip", retention="30 days")
-
 SENSOR_ID = "EstimatedOutdoor"
 OWM_URL = "https://api.openweathermap.org/data/2.5/weather"
 

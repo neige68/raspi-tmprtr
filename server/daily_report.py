@@ -13,8 +13,6 @@ from database import SessionLocal
 from models import Sensors, Tmprtr
 from slack_notify import slack_post
 
-logger.add("logs/daily_report_{time}.log", rotation="10 MB", compression="zip", retention="30 days")
-
 
 def build_report(db: Session, now: datetime) -> str:
     """レポートメッセージを組み立てて返す。"""

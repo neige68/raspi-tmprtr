@@ -91,6 +91,8 @@ crontab -l | cat - monitor.crontab | crontab -
 journalctl -t raspi-monitor -f
 ```
 
+cron スクリプト（monitor / daily_report / outdoor_temp）のログは stderr → `logger -t` 経由で journald/syslog にのみ出力され、`logs/` にはファイルを作らない。`logs/` に出るのは API サーバー（`main.py`）の `sensor_*.log` のみ。
+
 ### 日次レポート（毎日 8:00）
 
 ```bash

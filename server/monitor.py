@@ -19,8 +19,6 @@ from database import SessionLocal
 from models import Notifications, NotificationIntervals
 from slack_notify import slack_post
 
-logger.add("logs/monitor_{time}.log", rotation="10 MB", compression="zip", retention="30 days")
-
 
 def get_last_event_datetime(db: Session) -> tuple[datetime | None, str | None]:
     """No Data チェック対象センサー（data_check_enabled=True）の最終イベント時刻の

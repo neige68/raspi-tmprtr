@@ -142,6 +142,11 @@ ALTER TABLE <table> ADD COLUMN <col> <type> [NOT NULL DEFAULT ...] AFTER <既存
 
 コードを本番へ反映したら **`sudo systemctl restart raspi-tmprtr` が必須**（`git pull` だけでは実行中プロセスに反映されない。詳細は [server/README.md](server/README.md) 参照）。
 
+### ログ運用の注意
+
+- cron で起動する短命スクリプト（`monitor.py` / `outdoor_temp.py` / `daily_report.py`）では loguru の `logger.add("logs/xxx_{time}.log", rotation=...)` を使わないこと。`{time}` により実行ごとに新規ファイルができ、`rotation` に達しないため `retention` も発動せず `logs/` が肥大化する（26MB まで増えた実績あり）。stderr → cron の `| logger -t raspi-*` で journald/syslog に任せる
+- 常駐プロセスの `main.py`（`logs/sensor_{time}.log`）は rotation が起きるため現状のままで問題ない
+
 ### 認証
 TOTP（RFC 6238）によるリクエストヘッダー認証。クライアントは `X-TOTP-Code: <pyotp.TOTP(secret).now()>` を付けて送信する。シークレット生成:
 
